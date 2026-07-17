@@ -6,6 +6,8 @@
 <title>Roteiro Cultural — Patrimônio em RA</title>
 <!-- model-viewer LOCAL: sem dependência de CDN (causa comum de tela preta) -->
 <script type="module" src="model-viewer.min.js"></script>
+<!-- Supabase LOCAL (UMD): expõe window.supabase, sem depender de CDN externo -->
+<script src="supabase.js"></script>
 <style>
   :root{
     --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
@@ -31,6 +33,9 @@
   .sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
   .badge{display:inline-block;background:var(--signal-soft);color:var(--signal);border-radius:6px;
     padding:2px 7px;font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .src{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;
+    text-transform:uppercase;padding:2px 6px;border-radius:5px;border:1px solid var(--line-strong);color:var(--muted)}
+  .src.live{color:var(--route);border-color:var(--route)}
 
   .passport{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
     border-radius:14px;padding:12px 14px;margin-bottom:18px}
@@ -58,6 +63,7 @@
   .panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:14px;display:none}
   .panel.open{display:block}
   .panel h3{margin:0 0 8px;font-size:.72rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--signal)}
+  .panel .live-tag{font-family:var(--mono);font-size:.6rem;color:var(--route);margin:0 0 10px}
   .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
   .kpi{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono)}
   .kpi b{display:block;font-size:1.3rem;color:var(--route)}
@@ -72,7 +78,6 @@
     box-shadow:0 8px 26px rgba(176,134,40,.4);cursor:pointer}
   .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 20px}.hintbar b{color:var(--ink)}
 
-  /* status/erro na tela — nunca mais tela preta muda */
   .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
   .status{position:absolute;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none;
     color:var(--muted);font-size:.9rem;text-align:center;padding:20px}
@@ -110,7 +115,7 @@
 
   <!-- HOME -->
   <div id="home" class="screen active">
-    <p class="eyebrow">Roteiro Cultural · <span class="badge">demo</span></p>
+    <p class="eyebrow">Roteiro Cultural · <span class="badge">demo</span><span id="src" class="src">offline</span></p>
     <h1>Patrimônio em Realidade Aumentada</h1>
     <p class="sub">Três obras, três histórias. Em cada ponto, a arte aparece em <b>RA</b> no seu espaço. Complete o passaporte e ganhe um brinde.</p>
 
@@ -123,7 +128,8 @@
 
     <button class="panel-toggle" id="panelToggle">▸ Ver painel do organizador (o que a Secretaria enxerga)</button>
     <div class="panel" id="panel">
-      <h3>Telemetria em tempo real</h3>
+      <h3>Telemetria</h3>
+      <p class="live-tag" id="liveTag">● dados desta sessão</p>
       <div class="kpis">
         <div class="kpi"><b id="k-scan">0</b><span>Visitas a pontos</span></div>
         <div class="kpi"><b id="k-ar">0</b><span>RA aberta</span></div>
@@ -173,76 +179,106 @@
 
 </div>
 
-<script>
-(function(){
-  var ROTEIRO = [
-    {
-      id:'teatro', nome:'Theatro Municipal', sub:'Rio de Janeiro · Cinelândia · desde 1909',
-      glb:'teatro-municipal.glb', usdz:'teatro-municipal.usdz',
-      flabel:'Fundação',
-      fund:'Inaugurado em <b>14 de julho de 1909</b> pelo presidente Nilo Peçanha, coroou a reforma que abriu a Avenida Central (atual Rio Branco). Projeto de <b>Francisco de Oliveira Passos</b> — filho do prefeito Pereira Passos — com o francês <b>Albert Guilbert</b>, inspirado na Ópera de Paris. Obra iniciada em 1905.',
+<script type="module">
+  // ===================== Configuração do backend =====================
+  const SB_URL  = 'https://uhyzpmzxkgprjevnojpf.supabase.co';
+  const SB_KEY  = 'sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
+  const ENV_SLUG = 'rio-centro';
+
+  // ===================== Roteiro de fallback (offline) =====================
+  // Se o banco falhar, o app usa isto — nunca fica sem conteúdo na frente do cliente.
+  const FALLBACK = [
+    { id:'teatro', nome:'Theatro Municipal', sub:'Rio de Janeiro · Cinelândia · desde 1909',
+      glb:'teatro-municipal.glb', usdz:'teatro-municipal.usdz', flabel:'Fundação',
+      fund:'Inaugurado em <b>14 de julho de 1909</b> pelo presidente Nilo Peçanha, coroou a reforma que abriu a Avenida Central (atual Rio Branco). Projeto de <b>Francisco de Oliveira Passos</b> com o francês <b>Albert Guilbert</b>, inspirado na Ópera de Paris. Obra iniciada em 1905.',
       chips:['<b>1909</b> inauguração','<b>1905</b> início','estilo <b>eclético</b>'],
-      curios:[
-        {h:'Erguido sobre a água', p:'O terreno era alagadiço: o edifício foi fundado sobre cerca de <b>1.600 estacas de madeira</b> cravadas no lençol freático.'},
-        {h:'Arte por dentro — e um restaurante assírio', p:'<b>Eliseu Visconti</b> pintou o teto da plateia e o pano de boca. No subsolo funciona o restaurante <b>Assírio</b>, inspirado na antiga Pérsia e Babilônia.'}
-      ]
-    },
-    {
-      id:'pegaso', nome:'Pégaso', sub:'O cavalo alado das artes',
-      glb:'pegasus.glb', usdz:'pegasus.usdz',
-      flabel:'O símbolo',
-      fund:'Na mitologia grega, <b>Pégaso</b> é o cavalo alado nascido do sangue de Medusa. Companheiro dos heróis e das Musas, tornou-se <b>símbolo da inspiração poética e das artes</b> — por isso figura em teatros e óperas pelo mundo.',
+      curios:[{h:'Erguido sobre a água',p:'O terreno era alagadiço: fundado sobre cerca de <b>1.600 estacas de madeira</b> cravadas no lençol freático.'},
+              {h:'Arte por dentro — e um restaurante assírio',p:'<b>Eliseu Visconti</b> pintou o teto e o pano de boca. No subsolo, o restaurante <b>Assírio</b>, inspirado na antiga Pérsia.'}] },
+    { id:'pegaso', nome:'Pégaso', sub:'O cavalo alado das artes',
+      glb:'pegasus.glb', usdz:'pegasus.usdz', flabel:'O símbolo',
+      fund:'Na mitologia grega, <b>Pégaso</b> é o cavalo alado nascido do sangue de Medusa. Símbolo da inspiração poética e das artes.',
       chips:['mitologia <b>grega</b>','símbolo das <b>artes</b>'],
-      curios:[
-        {h:'A fonte das Musas', p:'Diz o mito que, ao bater o casco no monte Hélicon, Pégaso fez brotar a fonte <b>Hipocrene</b> — de onde os poetas “bebiam” inspiração.'},
-        {h:'No topo da Ópera de Paris', p:'O <b>Palais Garnier</b>, que inspirou o Theatro Municipal, exibe grupos dourados de Pégaso segurados pela Fama, obra de Charles Gumery.'}
-      ],
-      note:'Conteúdo simbólico — a procedência específica desta escultura será atualizada com os dados locais.'
-    },
-    {
-      id:'pietat', nome:'Pietat', sub:'Museu Frederic Marès · Barcelona',
-      glb:'pietat.glb', usdz:'pietat.usdz',
-      flabel:'A obra',
-      fund:'A <b>Pietat</b> — a Virgem amparando o corpo do filho morto — é um dos temas mais tocantes da arte cristã. Esta peça pertence ao acervo do <b>Museu Frederic Marès</b>, em Barcelona, instalado no Palau Reial Major e dedicado à escultura, da era pré-romana ao século XX.',
+      curios:[{h:'A fonte das Musas',p:'Ao bater o casco no monte Hélicon, Pégaso fez brotar a fonte <b>Hipocrene</b> — inspiração dos poetas.'},
+              {h:'No topo da Ópera de Paris',p:'O <b>Palais Garnier</b> exibe grupos dourados de Pégaso, obra de Charles Gumery.'}],
+      note:'Conteúdo simbólico — procedência específica a confirmar.' },
+    { id:'pietat', nome:'Pietat', sub:'Museu Frederic Marès · Barcelona',
+      glb:'pietat.glb', usdz:'pietat.usdz', flabel:'A obra',
+      fund:'A <b>Pietat</b> — a Virgem amparando o corpo do filho morto — pertence ao acervo do <b>Museu Frederic Marès</b>, em Barcelona.',
       chips:['tema <b>Pietà</b>','acervo <b>Marès</b>','digitalização <b>3D</b>'],
-      curios:[
-        {h:'O museu de um escultor', p:'<b>Frederic Marès</b> (1893–1991) era ele próprio escultor — e um colecionador voraz. Doou à cidade um dos maiores acervos de escultura da Espanha.'},
-        {h:'A joia da casa é uma Pietat', p:'A peça mais celebrada do museu é a Pietat de <b>Juan de Juni</b> (c. 1537) — a única obra do mestre castelhano preservada em um museu catalão.'}
-      ],
-      note:'Digitalização 3D de acervo (Scan the World). A identificação exata da peça será confirmada na versão final.'
-    }
+      curios:[{h:'O museu de um escultor',p:'<b>Frederic Marès</b> (1893–1991) doou à cidade um dos maiores acervos de escultura da Espanha.'},
+              {h:'A joia da casa é uma Pietat',p:'A peça mais celebrada é a Pietat de <b>Juan de Juni</b> (c. 1537).'}],
+      note:'Digitalização 3D de acervo. Identificação a confirmar.' }
   ];
 
-  var visited = {}, current = null;
-  var events = { scan:0, ar:0, seal:0, reward:0 };
-  function $(id){ return document.getElementById(id); }
-  function show(s){ document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');}); $(s).classList.add('active'); window.scrollTo(0,0); }
-  function track(k){ if(k in events){ events[k]++; renderPanel(); } }
+  // ===================== Estado =====================
+  let sb = null, envId = null, sessionId = null, online = false;
+  let ROTEIRO = FALLBACK;
+  let visited = {}, current = null;
+  let localEvents = { scan:0, ar:0, seal:0, reward:0 };
 
-  // ---- diagnóstico visível: erros nunca mais somem em tela preta ----
-  function showErr(msg){
-    var e = document.querySelector('#stage .errbox');
-    if(e){ e.textContent = '⚠ ' + msg; e.classList.add('show'); }
-  }
-  window.addEventListener('error', function(ev){
-    if(ev && ev.message) showErr(ev.message);
-  });
-  if(!('customElements' in window)){
-    alert('Este navegador não suporta os recursos 3D necessários.');
+  const $ = id => document.getElementById(id);
+  const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
+
+  // ===================== Conexão + carga do roteiro =====================
+  const withTimeout = (p, ms) => Promise.race([ p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)) ]);
+
+  async function boot(){
+    // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
+    ROTEIRO = FALLBACK; renderHome(); renderPanel();
+    // 2) Em segundo plano, tenta subir para dados "ao vivo" (com timeout).
+    try{
+      if(!window.supabase || !window.supabase.createClient) throw new Error('supabase.js não carregou');
+      sb = window.supabase.createClient(SB_URL, SB_KEY);
+      const { data: env, error: e1 } = await withTimeout(
+        sb.from('environments').select('id,name').eq('slug', ENV_SLUG).single(), 8000);
+      if(e1 || !env) throw e1 || new Error('roteiro não encontrado');
+      envId = env.id;
+      const { data: nodes, error: e2 } = await withTimeout(sb.from('physical_nodes')
+        .select('id,label,subtitle,order_index,experiences(title,body,model_glb_url,model_usdz_url,data)')
+        .eq('environment_id', envId).order('order_index'), 8000);
+      if(e2 || !nodes || !nodes.length) throw e2 || new Error('sem pontos');
+      ROTEIRO = nodes.map(n => {
+        const x = (n.experiences && n.experiences[0]) || {};
+        const d = x.data || {};
+        return { id:n.id, nome:n.label, sub:n.subtitle||'',
+          glb:x.model_glb_url, usdz:x.model_usdz_url,
+          flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'' };
+      });
+      const anonId = 'anon-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+      const { data: s } = await sb.from('participant_sessions')
+        .insert({ environment_id: envId, anon_id: anonId, consent_analytics: true }).select('id').single();
+      sessionId = s ? s.id : null;
+      online = true;
+      $('src').textContent = 'ao vivo'; $('src').classList.add('live');
+      $('liveTag').textContent = '● dados reais de todos os visitantes';
+      renderHome(); renderPanel();          // troca fallback -> dados do banco
+    }catch(err){
+      console.warn('[CampanhaVendavel] modo offline:', err && err.message);
+      online = false;                        // fallback já está na tela
+    }
   }
 
+  async function logEvent(kind, nodeId){
+    localEvents[kind==='ar_open'?'ar':(kind==='complete'?'seal':(kind==='redeem'?'reward':'scan'))]++;
+    if(online && sb && sessionId){
+      try{ await sb.from('interaction_events').insert({ session_id:sessionId, environment_id:envId, node_id:nodeId||null, kind }); }
+      catch(e){ /* silencioso: telemetria nunca quebra a experiência */ }
+    }
+  }
+
+  // ===================== Render =====================
   function renderHome(){
-    var ul = $('points'); ul.innerHTML = '';
-    var seals = $('seals'); seals.innerHTML = '';
-    ROTEIRO.forEach(function(m,i){
-      var done = !!visited[m.id];
-      var b = document.createElement('button');
+    const ul = $('points'); ul.innerHTML = '';
+    const seals = $('seals'); seals.innerHTML = '';
+    ROTEIRO.forEach((m,i)=>{
+      const done = !!visited[m.id];
+      const b = document.createElement('button');
       b.className = 'point' + (done?' done':'');
       b.innerHTML = '<span class="num">'+(done?'✓':(i+1))+'</span>'+
         '<span class="info"><b>'+m.nome+'</b><span>'+m.sub+'</span></span><span class="chev">›</span>';
-      b.onclick = function(){ openDetail(m.id); };
+      b.onclick = ()=>openDetail(m.id);
       ul.appendChild(b);
-      var sd = document.createElement('div');
+      const sd = document.createElement('div');
       sd.className = 'seal' + (done?' on':''); sd.textContent = done?'✓':(i+1);
       seals.appendChild(sd);
     });
@@ -250,68 +286,63 @@
   }
 
   function openDetail(id){
-    var m = ROTEIRO.find(function(x){return x.id===id;});
-    current = id; track('scan');
+    const m = ROTEIRO.find(x=>x.id===id); if(!m) return;
+    current = id; logEvent('scan', id);
     $('d-eyebrow').textContent = 'Ponto ' + (ROTEIRO.indexOf(m)+1) + ' de ' + ROTEIRO.length;
-    $('d-title').textContent = m.nome;
-    $('d-sub').textContent = m.sub;
-    $('d-flabel').textContent = m.flabel;
-    $('d-fund').innerHTML = m.fund;
-    $('d-chips').innerHTML = m.chips.map(function(c){return '<span class="fact">'+c+'</span>';}).join('');
-    $('d-curios').innerHTML = m.curios.map(function(c,i){
-      return '<div class="curio"><span class="cn">'+(i===0?'I':'II')+'</span><div><h3>'+c.h+'</h3><p>'+c.p+'</p></div></div>';
-    }).join('');
-    var note = $('d-note');
-    if(m.note){ note.style.display='block'; note.textContent = m.note; } else { note.style.display='none'; }
+    $('d-title').textContent = m.nome; $('d-sub').textContent = m.sub;
+    $('d-flabel').textContent = m.flabel; $('d-fund').innerHTML = m.fund;
+    $('d-chips').innerHTML = (m.chips||[]).map(c=>'<span class="fact">'+c+'</span>').join('');
+    $('d-curios').innerHTML = (m.curios||[]).map((c,i)=>'<div class="curio"><span class="cn">'+(i===0?'I':'II')+'</span><div><h3>'+c.h+'</h3><p>'+c.p+'</p></div></div>').join('');
+    const note = $('d-note');
+    if(m.note){ note.style.display='block'; note.textContent = m.note; } else note.style.display='none';
 
-    var stage = $('stage'); stage.innerHTML = '';
-    // barra de progresso + status + caixa de erro
-    var bar = document.createElement('div'); bar.className='loadbar';
-    var st  = document.createElement('div'); st.className='status'; st.textContent='Carregando obra em 3D…';
-    var eb  = document.createElement('div'); eb.className='errbox';
-    var mv = document.createElement('model-viewer');
-    mv.setAttribute('src', m.glb);
-    mv.setAttribute('ios-src', m.usdz);
-    mv.setAttribute('alt', m.nome);
+    const stage = $('stage'); stage.innerHTML = '';
+    const bar = document.createElement('div'); bar.className='loadbar';
+    const st  = document.createElement('div'); st.className='status'; st.textContent='Carregando obra em 3D…';
+    const eb  = document.createElement('div'); eb.className='errbox';
+    const mv = document.createElement('model-viewer');
+    mv.setAttribute('src', m.glb); mv.setAttribute('ios-src', m.usdz); mv.setAttribute('alt', m.nome);
     mv.setAttribute('ar',''); mv.setAttribute('ar-modes','webxr scene-viewer quick-look'); mv.setAttribute('ar-scale','auto');
     mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
     mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 75deg 108%'); mv.setAttribute('exposure','1.05');
-    mv.addEventListener('progress', function(ev){
-      var p = ev.detail && ev.detail.totalProgress || 0;
-      bar.style.width = Math.round(p*100) + '%';
-      if(p >= 1){ bar.style.width='100%'; setTimeout(function(){ bar.style.display='none'; }, 400); }
-    });
-    mv.addEventListener('load', function(){ st.classList.add('hide'); });
-    mv.addEventListener('error', function(ev){
-      st.classList.add('hide');
-      var d = ev.detail || {};
-      showErr('Falha ao carregar o modelo 3D ('+ m.glb +'). ' + (d.sourceError && d.sourceError.message ? d.sourceError.message : 'Verifique se os arquivos .glb foram publicados junto com a página.'));
-    });
-    var arBtn = document.createElement('button');
-    arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent = '🏛️ Ver em RA';
-    arBtn.addEventListener('click', function(){ track('ar'); });
-    mv.appendChild(arBtn);
-    stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st); stage.appendChild(eb);
+    mv.addEventListener('progress', ev=>{ const p=(ev.detail&&ev.detail.totalProgress)||0; bar.style.width=Math.round(p*100)+'%'; if(p>=1){bar.style.width='100%'; setTimeout(()=>bar.style.display='none',400);} });
+    mv.addEventListener('load', ()=>st.classList.add('hide'));
+    mv.addEventListener('error', ev=>{ st.classList.add('hide'); const d=ev.detail||{}; eb.textContent='⚠ Falha ao carregar '+m.glb+'. '+((d.sourceError&&d.sourceError.message)||'Verifique se os .glb foram publicados junto com a página.'); eb.classList.add('show'); });
+    const arBtn = document.createElement('button'); arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent='🏛️ Ver em RA';
+    arBtn.addEventListener('click', ()=>logEvent('ar_open', id));
+    mv.appendChild(arBtn); stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st); stage.appendChild(eb);
 
-    var c = $('collect');
+    const c = $('collect');
     if(visited[m.id]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
     else { c.disabled=false; c.textContent='Coletar selo deste ponto'; }
     show('detail');
   }
 
-  $('collect').onclick = function(){
-    if(!current || visited[current]) return;
-    visited[current] = true; track('seal'); renderHome();
-    if(Object.keys(visited).length === ROTEIRO.length){ track('reward'); show('reward'); }
-    else show('home');
-  };
-  $('back').onclick = function(){ show('home'); };
-  $('restart').onclick = function(){ visited={}; events={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
-  $('panelToggle').onclick = function(){ var p=$('panel'); var o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; };
-  function renderPanel(){ $('k-scan').textContent=events.scan; $('k-ar').textContent=events.ar; $('k-seal').textContent=events.seal; $('k-reward').textContent=events.reward; }
+  async function renderPanel(){
+    if(online && sb){
+      try{
+        const { data } = await sb.rpc('roteiro_stats', { env_slug: ENV_SLUG });
+        const map = { scan:0, ar_open:0, complete:0, redeem:0 };
+        (data||[]).forEach(r=>{ if(r.kind in map) map[r.kind]=Number(r.total); });
+        $('k-scan').textContent=map.scan; $('k-ar').textContent=map.ar_open; $('k-seal').textContent=map.complete; $('k-reward').textContent=map.redeem;
+        return;
+      }catch(e){ /* cai para local */ }
+    }
+    $('k-scan').textContent=localEvents.scan; $('k-ar').textContent=localEvents.ar; $('k-seal').textContent=localEvents.seal; $('k-reward').textContent=localEvents.reward;
+  }
 
-  renderHome(); renderPanel();
-})();
+  // ===================== Ações =====================
+  $('collect').onclick = async ()=>{
+    if(!current || visited[current]) return;
+    visited[current] = true; await logEvent('complete', current); renderHome();
+    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', current); renderPanel(); show('reward'); }
+    else { renderPanel(); show('home'); }
+  };
+  $('back').onclick = ()=>show('home');
+  $('restart').onclick = ()=>{ visited={}; localEvents={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
+  $('panelToggle').onclick = function(){ const p=$('panel'); const o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; if(o) renderPanel(); };
+
+  boot();
 </script>
 </body>
 </html>
