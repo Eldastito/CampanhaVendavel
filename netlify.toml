@@ -1,0 +1,4 @@
+# Publica a pasta do site (deploy automático via GitHub)
+[build]
+  publish = "demo-roteiro"
+  command = ""
