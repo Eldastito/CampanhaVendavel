@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Roteiro Cultural — CampanhaVendavel (demo)</title>
+<!-- model-viewer: RA nativa (Android Scene Viewer / iOS Quick Look) -->
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#D5691F; --signal-soft:#F7E7D6;
+    --line:#D3D8D0; --line-strong:#BFC6BD;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;
+      --route:#54B892;--route-soft:#16261F;--signal:#EE8A47;--signal-soft:#2A1D12;
+      --line:#26302A;--line-strong:#374238;}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  .app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;
+    padding:calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom))}
+  .eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0}
+  h1{font-size:1.55rem;letter-spacing:-.02em;margin:4px 0 2px}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+
+  /* progress */
+  .passport{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 14px;margin-bottom:18px}
+  .seals{display:flex;gap:6px;margin-left:auto}
+  .seal{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-strong);display:grid;place-items:center;
+    font-size:.7rem;color:var(--muted);transition:.25s}
+  .seal.on{background:var(--route);border-color:var(--route);color:#fff}
+  .passport .lbl{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .passport b{display:block;font-size:1rem;color:var(--ink);letter-spacing:-.01em;font-family:var(--sans)}
+
+  /* point list */
+  .points{display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:0}
+  .point{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:14px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;
+    transition:transform .12s,border-color .2s}
+  .point:active{transform:scale(.99)}
+  .point.done{border-color:var(--route)}
+  .num{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--route-soft);color:var(--route);
+    font-family:var(--mono);font-weight:700;display:grid;place-items:center}
+  .point.done .num{background:var(--route);color:#fff}
+  .point .info{flex:1;min-width:0}
+  .point .info b{display:block;letter-spacing:-.01em}
+  .point .info span{color:var(--muted);font-size:.85rem}
+  .point .chev{color:var(--muted);font-size:1.2rem}
+
+  /* checkpoint screen */
+  .screen{display:none;flex-direction:column;flex:1}
+  .screen.active{display:flex}
+  .back{background:none;border:0;color:var(--route);font:inherit;font-weight:600;padding:0;margin-bottom:12px;cursor:pointer;align-self:flex-start}
+  .stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);
+    height:min(52vh,420px);margin-bottom:14px}
+  model-viewer{width:100%;height:100%;--poster-color:transparent}
+  .ar-btn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;
+    background:var(--signal);color:#fff;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:700;
+    box-shadow:0 8px 24px rgba(213,105,31,.35);cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+  .narr{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--route);
+    border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .narr .who{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--route);margin:0 0 4px}
+  .narr p{margin:0}
+  .cta{display:flex;flex-direction:column;gap:10px;margin-top:auto}
+  .btn{font:inherit;font-weight:700;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--route)}
+  .btn.primary{background:var(--route);color:#fff}
+  .btn.ghost{background:transparent;color:var(--route)}
+  .btn.big{background:var(--signal);border-color:var(--signal);color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  .scanhint{font-size:.78rem;color:var(--muted);text-align:center;margin:2px 0 0}
+
+  /* reward */
+  .reward{text-align:center;padding:8px 0}
+  .reward .medal{font-size:3rem;margin:8px 0}
+  .coupon{border:2px dashed var(--signal);border-radius:14px;padding:16px;margin:16px 0;background:var(--signal-soft)}
+  .coupon .code{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.1em;color:var(--ink)}
+
+  /* org panel */
+  .panel-toggle{margin-top:18px;background:none;border:1px dashed var(--line-strong);color:var(--muted);
+    font:inherit;font-size:.8rem;border-radius:10px;padding:8px;cursor:pointer;width:100%}
+  .panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:14px;display:none}
+  .panel.open{display:block}
+  .panel h3{margin:0 0 8px;font-size:.8rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--signal)}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-family:var(--mono);font-size:.8rem}
+  .kpi{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .kpi b{display:block;font-size:1.3rem;color:var(--route)}
+  .kpi span{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em}
+
+  .foot{margin-top:18px;font-family:var(--mono);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.6}
+  .badge-demo{display:inline-block;background:var(--signal-soft);color:var(--signal);border-radius:6px;
+    padding:2px 7px;font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= HOME ================= -->
+  <div id="home" class="screen active">
+    <p class="eyebrow">Roteiro Cultural · <span class="badge-demo">demo</span></p>
+    <h1>Caminhos da Cidade Velha</h1>
+    <p class="sub">Percorra 3 pontos históricos. Em cada um, o guia virtual aparece em <b>realidade aumentada</b> e conta a história. Complete o passaporte e ganhe um brinde.</p>
+
+    <div class="passport">
+      <div>
+        <span class="lbl">Passaporte</span>
+        <b id="seal-count">0 de 3 selos</b>
+      </div>
+      <div class="seals" id="seals">
+        <div class="seal" data-i="0">1</div>
+        <div class="seal" data-i="1">2</div>
+        <div class="seal" data-i="2">3</div>
+      </div>
+    </div>
+
+    <ul class="points" id="points"></ul>
+
+    <button class="panel-toggle" id="panelToggle">▸ Ver painel do organizador (o que a Secretaria enxerga)</button>
+    <div class="panel" id="panel">
+      <h3>Telemetria em tempo real</h3>
+      <div class="kpis">
+        <div class="kpi"><b id="k-scan">0</b><span>Check-ins</span></div>
+        <div class="kpi"><b id="k-ar">0</b><span>RA aberta</span></div>
+        <div class="kpi"><b id="k-seal">0</b><span>Selos</span></div>
+        <div class="kpi"><b id="k-reward">0</b><span>Brindes</span></div>
+      </div>
+    </div>
+
+    <p class="foot">CampanhaVendavel · demonstração<br>Modelos 3D são placeholders — no projeto real, aqui aparecem os monumentos e figuras históricas da cidade.</p>
+  </div>
+
+  <!-- ================= POINT ================= -->
+  <div id="point" class="screen">
+    <button class="back" id="back">← Voltar ao roteiro</button>
+    <p class="eyebrow" id="p-eyebrow">Ponto 1</p>
+    <h1 id="p-title" style="font-size:1.35rem">—</h1>
+    <p class="sub" id="p-sub" style="margin-bottom:12px">—</p>
+
+    <div class="stage" id="stage"><!-- model-viewer injetado aqui --></div>
+
+    <div class="narr">
+      <p class="who">O guia conta</p>
+      <p id="p-narr">—</p>
+    </div>
+
+    <div class="cta">
+      <button class="btn primary" id="collect">Coletar selo deste ponto</button>
+      <p class="scanhint">No app real, o selo é liberado ao ler o QR/NFC do ponto.</p>
+    </div>
+  </div>
+
+  <!-- ================= REWARD ================= -->
+  <div id="reward" class="screen">
+    <div class="reward">
+      <div class="medal">🏅</div>
+      <h1>Roteiro concluído!</h1>
+      <p class="sub">Você percorreu a Cidade Velha e completou o passaporte cultural.</p>
+      <div class="coupon">
+        <p class="eyebrow" style="text-align:center">Seu brinde</p>
+        <div class="code">CULTURA-2026</div>
+        <p class="sub" style="margin:8px 0 0;font-size:.85rem">Apresente na Casa de Cultura para retirar.</p>
+      </div>
+      <button class="btn ghost" id="restart">Refazer o roteiro</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // Modelo 3D placeholder (par glb+usdz com CORS) — troque pelos monumentos reais.
+  var GLB = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
+  var USDZ = "https://modelviewer.dev/shared-assets/models/Astronaut.usdz";
+
+  var ROTEIRO = [
+    { nome:"Praça da Matriz", sub:"Marco zero da cidade",
+      narr:"Bem-vindo! Esta praça existe desde 1780. Aqui passavam as procissões e o comércio de tropeiros. Repare no chão de pedra original." },
+    { nome:"Solar do Barão", sub:"Casa senhorial do século XIX",
+      narr:"Este solar pertenceu ao Barão do Café. Hoje é a Casa de Cultura. Nas paredes ainda há azulejos portugueses originais." },
+    { nome:"Mirante do Forte", sub:"Vista e história militar",
+      narr:"Do alto do forte se defendia a baía. Complete aqui seu passaporte — e leve um brinde de quem preserva a memória da cidade." }
+  ];
+
+  var visited = [false,false,false];
+  var events = { scan:0, ar:0, seal:0, reward:0 };
+  var current = 0;
+
+  function track(kind){ if(kind in events){ events[kind]++; renderPanel(); } }
+  function $(id){ return document.getElementById(id); }
+  function show(screen){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    $(screen).classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  function renderPoints(){
+    var ul = $('points'); ul.innerHTML = '';
+    ROTEIRO.forEach(function(p,i){
+      var b = document.createElement('button');
+      b.className = 'point' + (visited[i] ? ' done' : '');
+      b.innerHTML = '<span class="num">'+(visited[i]?'✓':(i+1))+'</span>'+
+        '<span class="info"><b>'+p.nome+'</b><span>'+p.sub+'</span></span>'+
+        '<span class="chev">›</span>';
+      b.onclick = function(){ openPoint(i); };
+      ul.appendChild(b);
+    });
+    var n = visited.filter(Boolean).length;
+    $('seal-count').textContent = n + ' de 3 selos';
+    document.querySelectorAll('#seals .seal').forEach(function(s,i){
+      s.classList.toggle('on', visited[i]); if(visited[i]) s.textContent='✓';
+      else s.textContent = (i+1);
+    });
+  }
+
+  function openPoint(i){
+    current = i;
+    track('scan'); // chegou/leu o ponto
+    var p = ROTEIRO[i];
+    $('p-eyebrow').textContent = 'Ponto ' + (i+1) + ' de 3';
+    $('p-title').textContent = p.nome;
+    $('p-sub').textContent = p.sub;
+    $('p-narr').textContent = p.narr;
+
+    // injeta model-viewer com botão de RA
+    var stage = $('stage');
+    stage.innerHTML = '';
+    var mv = document.createElement('model-viewer');
+    mv.setAttribute('src', GLB);
+    mv.setAttribute('ios-src', USDZ);
+    mv.setAttribute('alt', 'Guia virtual — ' + p.nome);
+    mv.setAttribute('ar','');
+    mv.setAttribute('ar-modes','webxr scene-viewer quick-look');
+    mv.setAttribute('ar-scale','auto');
+    mv.setAttribute('camera-controls','');
+    mv.setAttribute('auto-rotate','');
+    mv.setAttribute('shadow-intensity','1');
+    mv.setAttribute('camera-orbit','0deg 75deg 105%');
+    var arBtn = document.createElement('button');
+    arBtn.className = 'ar-btn'; arBtn.setAttribute('slot','ar-button');
+    arBtn.innerHTML = '📷 Ver o guia aqui (RA)';
+    arBtn.addEventListener('click', function(){ track('ar'); });
+    mv.appendChild(arBtn);
+    stage.appendChild(mv);
+
+    var collect = $('collect');
+    if(visited[i]){ collect.disabled = true; collect.textContent = 'Selo já coletado ✓'; }
+    else { collect.disabled = false; collect.textContent = 'Coletar selo deste ponto'; }
+
+    show('point');
+  }
+
+  $('collect').onclick = function(){
+    if(visited[current]) return;
+    visited[current] = true;
+    track('seal');
+    renderPoints();
+    if(visited.every(Boolean)){ track('reward'); show('reward'); }
+    else { show('home'); }
+  };
+
+  $('back').onclick = function(){ show('home'); };
+  $('restart').onclick = function(){
+    visited = [false,false,false];
+    events = { scan:0, ar:0, seal:0, reward:0 };
+    renderPoints(); renderPanel(); show('home');
+  };
+
+  $('panelToggle').onclick = function(){
+    var pnl = $('panel'); var open = pnl.classList.toggle('open');
+    this.textContent = (open?'▾':'▸') + ' Ver painel do organizador (o que a Secretaria enxerga)';
+  };
+  function renderPanel(){
+    $('k-scan').textContent = events.scan;
+    $('k-ar').textContent = events.ar;
+    $('k-seal').textContent = events.seal;
+    $('k-reward').textContent = events.reward;
+  }
+
+  renderPoints(); renderPanel();
+})();
+</script>
+</body>
+</html>
