@@ -70,9 +70,34 @@
 
   .empty{color:var(--muted);text-align:center;padding:26px;font-size:.95rem}
   .foot{margin-top:20px;font-family:var(--mono);font-size:.64rem;color:var(--muted);text-align:center;line-height:1.7}
+
+  .login{position:fixed;inset:0;z-index:50;background:var(--paper);display:none;place-items:center;padding:20px}
+  .login.show{display:grid}
+  .login .box{width:min(380px,92vw);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .login h2{font-family:var(--serif);margin:2px 0 4px;font-size:1.5rem}
+  .login .lead{color:var(--muted);font-size:.9rem;margin:0 0 18px}
+  .login label{display:block;font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .login input{width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);margin-bottom:14px}
+  .login button{width:100%}
+  .login .err{color:#B3362B;font-size:.82rem;margin:10px 0 0;min-height:1.1em}
+  .hidden{display:none !important}
 </style>
 </head>
 <body>
+<div id="login" class="login show">
+  <form class="box" id="loginForm">
+    <p class="eyebrow">Painel do Organizador</p>
+    <h2>Entrar</h2>
+    <p class="lead">Acesso restrito ao organizador do roteiro.</p>
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Senha</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Entrar</button>
+    <p class="err" id="loginErr"></p>
+  </form>
+</div>
+
 <div class="wrap">
   <header>
     <div>
@@ -83,6 +108,7 @@
     <div class="tools">
       <span class="updated" id="updated"></span>
       <button class="sec" id="refresh" type="button">↻ Atualizar</button>
+      <button class="sec hidden" id="logout" type="button">Sair</button>
     </div>
   </header>
   <p class="status" id="status">Conectando ao banco…</p>
@@ -198,9 +224,33 @@
     }
   }
 
+  function showLogin(){ $('login').classList.add('show'); $('logout').classList.add('hidden'); }
+  function showApp(){ $('login').classList.remove('show'); $('logout').classList.remove('hidden'); }
+
+  async function checkAuth(){
+    if(!sb){ setStatus('Biblioteca do banco não carregou (supabase.js).','err'); return; }
+    try{
+      const { data } = await sb.auth.getSession();
+      if(data && data.session){ showApp(); load(); }
+      else showLogin();
+    }catch(e){ showLogin(); }
+  }
+
   try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){}
+
   $('refresh').onclick=load;
-  load();
+  $('loginForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    $('loginErr').textContent='';
+    if(!sb){ $('loginErr').textContent='Banco indisponível.'; return; }
+    const email=$('email').value.trim(), password=$('password').value;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ $('loginErr').textContent = 'Não foi possível entrar: ' + error.message; return; }
+    showApp(); load();
+  });
+  $('logout').onclick = async function(){ try{ await sb.auth.signOut(); }catch(e){} showLogin(); };
+
+  checkAuth();
 </script>
 </body>
 </html>
