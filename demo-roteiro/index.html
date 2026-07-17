@@ -76,7 +76,10 @@
   .ar-btn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;
     background:var(--signal);color:#14201B;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;
     box-shadow:0 8px 26px rgba(176,134,40,.4);cursor:pointer}
-  .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 20px}.hintbar b{color:var(--ink)}
+  .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 12px}.hintbar b{color:var(--ink)}
+  .arnote{background:var(--signal-soft);border:1px solid var(--signal);color:var(--ink);
+    border-radius:12px;padding:11px 14px;margin:0 0 20px;font-size:.86rem;line-height:1.5}
+  .arnote b{color:var(--signal)}
 
   .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
   .status{position:absolute;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none;
@@ -149,6 +152,7 @@
     <p class="sub" id="d-sub" style="margin-bottom:12px">—</p>
     <div class="stage" id="stage"></div>
     <p class="hintbar">Gire com o dedo · toque em <b>Ver em RA</b> para trazer ao seu ambiente</p>
+    <p class="arnote" id="arnote" style="display:none"></p>
     <div class="block">
       <p class="tag" id="d-flabel">Fundação</p>
       <p class="lead" id="d-fund">—</p>
@@ -218,6 +222,24 @@
 
   const $ = id => document.getElementById(id);
   const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
+
+  // Explica na tela por que a RA (não) está disponível — em vez do botão sumir em silêncio.
+  function updateArNote(mv){
+    const el = $('arnote'); if(!el || !mv) return;
+    const ua = navigator.userAgent || '';
+    const mobile = /Android|iPhone|iPad|iPod/i.test(ua);
+    const inApp  = /(FBAN|FBAV|Instagram|Line\/|WhatsApp|WhatsApp\/|WeChat|MicroMessenger|Twitter|GSA)/i.test(ua);
+    if(mv.canActivateAR){ el.style.display='none'; return; }   // botão de RA está visível
+    let msg;
+    if(!mobile){
+      msg = '📱 A <b>Realidade Aumentada</b> funciona no celular. Abra este mesmo link no seu telefone — Safari (iPhone) ou Chrome (Android).';
+    } else if(inApp){
+      msg = '↗ Abra no <b>navegador do celular</b> (Safari/Chrome), não aqui dentro do app. Toque no menu “···” e escolha “Abrir no navegador”, depois toque em Ver em RA.';
+    } else {
+      msg = 'Seu navegador não liberou a RA. No <b>iPhone</b> use o Safari; no <b>Android</b>, confira se o app “Google Play Services para RA” está instalado e atualizado.';
+    }
+    el.innerHTML = msg; el.style.display='block';
+  }
 
   // ===================== Conexão + carga do roteiro =====================
   const withTimeout = (p, ms) => Promise.race([ p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)) ]);
@@ -306,7 +328,9 @@
     mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
     mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 75deg 108%'); mv.setAttribute('exposure','1.05');
     mv.addEventListener('progress', ev=>{ const p=(ev.detail&&ev.detail.totalProgress)||0; bar.style.width=Math.round(p*100)+'%'; if(p>=1){bar.style.width='100%'; setTimeout(()=>bar.style.display='none',400);} });
-    mv.addEventListener('load', ()=>st.classList.add('hide'));
+    mv.addEventListener('load', ()=>{ st.classList.add('hide'); updateArNote(mv); });
+    mv.addEventListener('ar-status', ()=>updateArNote(mv));
+    setTimeout(()=>updateArNote(mv), 1600); // fallback caso 'load' já tenha disparado
     mv.addEventListener('error', ev=>{ st.classList.add('hide'); const d=ev.detail||{}; eb.textContent='⚠ Falha ao carregar '+m.glb+'. '+((d.sourceError&&d.sourceError.message)||'Verifique se os .glb foram publicados junto com a página.'); eb.classList.add('show'); });
     const arBtn = document.createElement('button'); arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent='🏛️ Ver em RA';
     arBtn.addEventListener('click', ()=>logEvent('ar_open', id));
