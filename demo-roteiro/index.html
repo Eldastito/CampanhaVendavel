@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Roteiro Cultural do Rio — Patrimônio em RA</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#B08628; --signal-soft:#F3E9CF;
+    --line:#D3D8D0; --line-strong:#BFC6BD;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;
+      --route:#54B892;--route-soft:#16261F;--signal:#D6AE56;--signal-soft:#2A2110;
+      --line:#26302A;--line-strong:#374238;}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .app{max-width:500px;margin:0 auto;min-height:100dvh;
+    padding:calc(18px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+  .screen{display:none}.screen.active{display:block}
+
+  .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);margin:0;font-weight:700}
+  h1{font-family:var(--serif);font-size:1.85rem;line-height:1.06;letter-spacing:-.01em;margin:6px 0 4px;font-weight:700}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+  .badge{display:inline-block;background:var(--signal-soft);color:var(--signal);border-radius:6px;
+    padding:2px 7px;font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+
+  /* passport */
+  .passport{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 14px;margin-bottom:18px}
+  .passport .lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .passport b{display:block;font-size:1rem;color:var(--ink);font-family:var(--sans)}
+  .seals{display:flex;gap:6px;margin-left:auto}
+  .seal{width:24px;height:24px;border-radius:50%;border:2px solid var(--line-strong);display:grid;place-items:center;
+    font-size:.72rem;color:var(--muted);font-family:var(--mono)}
+  .seal.on{background:var(--route);border-color:var(--route);color:#fff}
+
+  /* points list */
+  .points{display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:0}
+  .point{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:14px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;transition:transform .12s,border-color .2s}
+  .point:active{transform:scale(.99)}
+  .point.done{border-color:var(--route)}
+  .num{flex:0 0 auto;width:36px;height:36px;border-radius:10px;background:var(--signal-soft);color:var(--signal);
+    font-family:var(--serif);font-weight:700;display:grid;place-items:center}
+  .point.done .num{background:var(--route);color:#fff}
+  .point .info{flex:1;min-width:0}.point .info b{display:block;letter-spacing:-.01em}
+  .point .info span{color:var(--muted);font-size:.85rem}
+  .point .chev{color:var(--muted);font-size:1.2rem}
+
+  .panel-toggle{margin-top:18px;background:none;border:1px dashed var(--line-strong);color:var(--muted);
+    font:inherit;font-size:.8rem;border-radius:10px;padding:9px;cursor:pointer;width:100%}
+  .panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:14px;display:none}
+  .panel.open{display:block}
+  .panel h3{margin:0 0 8px;font-size:.72rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--signal)}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono)}
+  .kpi b{display:block;font-size:1.3rem;color:var(--route)}
+  .kpi span{color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
+
+  /* detail */
+  .back{background:none;border:0;color:var(--route);font:inherit;font-weight:600;padding:0;margin-bottom:12px;cursor:pointer}
+  .stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);
+    height:min(48vh,380px);margin-bottom:12px}
+  model-viewer{width:100%;height:100%;background:linear-gradient(180deg,var(--card),var(--paper))}
+  .ar-btn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;
+    background:var(--signal);color:#14201B;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;
+    box-shadow:0 8px 26px rgba(176,134,40,.4);cursor:pointer}
+  .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 20px}.hintbar b{color:var(--ink)}
+
+  .block{margin-bottom:20px}
+  .tag{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--route);display:flex;align-items:center;gap:9px;margin:0 0 8px}
+  .tag::before{content:"";height:1px;width:22px;background:var(--route)}
+  .lead{font-size:1.02rem;margin:0}.lead b{color:var(--ink)}
+  .factline{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+  .fact{font-family:var(--mono);font-size:.72rem;background:var(--route-soft);color:var(--ink);border-radius:7px;padding:6px 10px}
+  .fact b{color:var(--route)}
+  .curio{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+  .curio .cn{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--signal-soft);color:var(--signal);font-family:var(--serif);font-weight:700;font-size:1.1rem;display:grid;place-items:center}
+  .curio h3{margin:0 0 3px;font-size:1rem}.curio p{margin:0;font-size:.93rem}
+  .note{font-size:.78rem;color:var(--muted);font-style:italic;margin:4px 0 0}
+
+  .btn{font:inherit;font-weight:700;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--route);width:100%;margin-top:6px}
+  .btn.primary{background:var(--route);color:#fff}.btn:disabled{opacity:.5;cursor:default}
+
+  /* reward */
+  .reward{text-align:center}.reward .medal{font-size:3rem;margin:8px 0}
+  .coupon{border:2px dashed var(--signal);border-radius:14px;padding:16px;margin:16px 0;background:var(--signal-soft)}
+  .coupon .code{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.1em}
+  .btn.ghost{background:transparent;color:var(--route)}
+
+  .foot{margin-top:20px;font-family:var(--mono);font-size:.66rem;color:var(--muted);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <div id="home" class="screen active">
+    <p class="eyebrow">Roteiro Cultural do Rio · <span class="badge">demo</span></p>
+    <h1>Patrimônio em Realidade Aumentada</h1>
+    <p class="sub">Visite os pontos do roteiro. Em cada um, a obra aparece em <b>RA</b> e conta sua história. Complete o passaporte e ganhe um brinde.</p>
+
+    <div class="passport">
+      <div><span class="lbl">Passaporte</span><b id="seal-count">0 selos</b></div>
+      <div class="seals" id="seals"></div>
+    </div>
+
+    <ul class="points" id="points"></ul>
+
+    <button class="panel-toggle" id="panelToggle">▸ Ver painel do organizador (o que a Secretaria enxerga)</button>
+    <div class="panel" id="panel">
+      <h3>Telemetria em tempo real</h3>
+      <div class="kpis">
+        <div class="kpi"><b id="k-scan">0</b><span>Visitas a pontos</span></div>
+        <div class="kpi"><b id="k-ar">0</b><span>RA aberta</span></div>
+        <div class="kpi"><b id="k-seal">0</b><span>Selos coletados</span></div>
+        <div class="kpi"><b id="k-reward">0</b><span>Brindes</span></div>
+      </div>
+    </div>
+
+    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para todo o Centro histórico.</p>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="detail" class="screen">
+    <button class="back" id="back">← Voltar ao roteiro</button>
+    <p class="eyebrow" id="d-eyebrow">—</p>
+    <h1 id="d-title" style="font-size:1.5rem">—</h1>
+    <p class="sub" id="d-sub" style="margin-bottom:12px">—</p>
+    <div class="stage" id="stage"></div>
+    <p class="hintbar">Gire com o dedo · toque em <b>Ver em RA</b> para trazer ao seu ambiente</p>
+    <div class="block">
+      <p class="tag" id="d-flabel">Fundação</p>
+      <p class="lead" id="d-fund">—</p>
+      <div class="factline" id="d-chips"></div>
+    </div>
+    <div class="block">
+      <p class="tag">Duas curiosidades</p>
+      <div id="d-curios"></div>
+      <p class="note" id="d-note" style="display:none"></p>
+    </div>
+    <button class="btn primary" id="collect">Coletar selo deste ponto</button>
+  </div>
+
+  <!-- REWARD -->
+  <div id="reward" class="screen">
+    <div class="reward">
+      <div class="medal">🏅</div>
+      <h1>Roteiro concluído!</h1>
+      <p class="sub">Você percorreu o roteiro e completou o passaporte cultural.</p>
+      <div class="coupon">
+        <p class="eyebrow" style="text-align:center">Seu brinde</p>
+        <div class="code">CULTURA-RIO</div>
+        <p class="sub" style="margin:8px 0 0;font-size:.85rem">Apresente na bilheteria para retirar.</p>
+      </div>
+      <button class="btn ghost" id="restart">Refazer o roteiro</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var ROTEIRO = [
+    {
+      id:'teatro', nome:'Theatro Municipal', sub:'Cinelândia · desde 1909',
+      glb:'teatro-municipal.glb', usdz:'teatro-municipal.usdz',
+      flabel:'Fundação',
+      fund:'Inaugurado em <b>14 de julho de 1909</b> pelo presidente Nilo Peçanha, coroou a reforma que abriu a Avenida Central (atual Rio Branco). Projeto de <b>Francisco de Oliveira Passos</b> — filho do prefeito Pereira Passos — com o francês <b>Albert Guilbert</b>, inspirado na Ópera de Paris. Obra iniciada em 1905.',
+      chips:['<b>1909</b> inauguração','<b>1905</b> início','estilo <b>eclético</b>'],
+      curios:[
+        {h:'Erguido sobre a água', p:'O terreno era alagadiço: o edifício foi fundado sobre cerca de <b>1.600 estacas de madeira</b> cravadas no lençol freático.'},
+        {h:'Arte por dentro — e um restaurante assírio', p:'<b>Eliseu Visconti</b> pintou o teto da plateia e o pano de boca. No subsolo funciona o restaurante <b>Assírio</b>, inspirado na antiga Pérsia e Babilônia.'}
+      ]
+    },
+    {
+      id:'pegaso', nome:'Pégaso', sub:'O cavalo alado das artes',
+      glb:'pegasus.glb', usdz:'pegasus.usdz',
+      flabel:'O símbolo',
+      fund:'Na mitologia grega, <b>Pégaso</b> é o cavalo alado nascido do sangue de Medusa. Companheiro dos heróis e das Musas, tornou-se <b>símbolo da inspiração poética e das artes</b> — por isso figura em teatros e óperas pelo mundo.',
+      chips:['mitologia <b>grega</b>','símbolo das <b>artes</b>'],
+      curios:[
+        {h:'A fonte das Musas', p:'Diz o mito que, ao bater o casco no monte Hélicon, Pégaso fez brotar a fonte <b>Hipocrene</b> — de onde os poetas “bebiam” inspiração.'},
+        {h:'No topo da Ópera de Paris', p:'O <b>Palais Garnier</b>, que inspirou o Theatro Municipal, exibe grupos dourados de Pégaso segurados pela Fama, obra de Charles Gumery.'}
+      ],
+      note:'Conteúdo simbólico — a procedência específica desta escultura será atualizada com os dados locais.'
+    }
+  ];
+
+  var visited = {}, current = null;
+  var events = { scan:0, ar:0, seal:0, reward:0 };
+  function $(id){ return document.getElementById(id); }
+  function show(s){ document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');}); $(s).classList.add('active'); window.scrollTo(0,0); }
+  function track(k){ if(k in events){ events[k]++; renderPanel(); } }
+
+  function renderHome(){
+    var ul = $('points'); ul.innerHTML = '';
+    var seals = $('seals'); seals.innerHTML = '';
+    ROTEIRO.forEach(function(m,i){
+      var done = !!visited[m.id];
+      var b = document.createElement('button');
+      b.className = 'point' + (done?' done':'');
+      b.innerHTML = '<span class="num">'+(done?'✓':(i+1))+'</span>'+
+        '<span class="info"><b>'+m.nome+'</b><span>'+m.sub+'</span></span><span class="chev">›</span>';
+      b.onclick = function(){ openDetail(m.id); };
+      ul.appendChild(b);
+      var sd = document.createElement('div');
+      sd.className = 'seal' + (done?' on':''); sd.textContent = done?'✓':(i+1);
+      seals.appendChild(sd);
+    });
+    var n = Object.keys(visited).length;
+    $('seal-count').textContent = n + ' de ' + ROTEIRO.length + ' selos';
+  }
+
+  function openDetail(id){
+    var m = ROTEIRO.find(function(x){return x.id===id;});
+    current = id; track('scan');
+    $('d-eyebrow').textContent = 'Ponto ' + (ROTEIRO.indexOf(m)+1) + ' de ' + ROTEIRO.length;
+    $('d-title').textContent = m.nome;
+    $('d-sub').textContent = m.sub;
+    $('d-flabel').textContent = m.flabel;
+    $('d-fund').innerHTML = m.fund;
+    $('d-chips').innerHTML = m.chips.map(function(c){return '<span class="fact">'+c+'</span>';}).join('');
+    $('d-curios').innerHTML = m.curios.map(function(c,i){
+      return '<div class="curio"><span class="cn">'+(i===0?'I':'II')+'</span><div><h3>'+c.h+'</h3><p>'+c.p+'</p></div></div>';
+    }).join('');
+    var note = $('d-note');
+    if(m.note){ note.style.display='block'; note.textContent = m.note; } else { note.style.display='none'; }
+
+    // injeta model-viewer só agora (carrega o modelo sob demanda)
+    var stage = $('stage'); stage.innerHTML = '';
+    var mv = document.createElement('model-viewer');
+    mv.setAttribute('src', m.glb);
+    mv.setAttribute('ios-src', m.usdz);
+    mv.setAttribute('alt', m.nome);
+    mv.setAttribute('ar',''); mv.setAttribute('ar-modes','webxr scene-viewer quick-look'); mv.setAttribute('ar-scale','auto');
+    mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
+    mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 72deg 110%'); mv.setAttribute('exposure','1.05');
+    var arBtn = document.createElement('button');
+    arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.innerHTML = '🏛️ Ver em RA';
+    arBtn.addEventListener('click', function(){ track('ar'); });
+    mv.appendChild(arBtn); stage.appendChild(mv);
+
+    var c = $('collect');
+    if(visited[m.id]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
+    else { c.disabled=false; c.textContent='Coletar selo deste ponto'; }
+    show('detail');
+  }
+
+  $('collect').onclick = function(){
+    if(!current || visited[current]) return;
+    visited[current] = true; track('seal'); renderHome();
+    if(Object.keys(visited).length === ROTEIRO.length){ track('reward'); show('reward'); }
+    else show('home');
+  };
+  $('back').onclick = function(){ show('home'); };
+  $('restart').onclick = function(){ visited={}; events={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
+  $('panelToggle').onclick = function(){ var p=$('panel'); var o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; };
+  function renderPanel(){ $('k-scan').textContent=events.scan; $('k-ar').textContent=events.ar; $('k-seal').textContent=events.seal; $('k-reward').textContent=events.reward; }
+
+  renderHome(); renderPanel();
+})();
+</script>
+</body>
+</html>
