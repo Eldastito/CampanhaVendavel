@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo de Campanhas Vendáveis — Jornadas para feiras e eventos</title>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#D5691F; --signal-soft:#F7E7D6;
+    --line:#D3D8D0; --line-strong:#BFC6BD;
+    --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+    --maxw:min(940px,92vw);
+    --readw:70ch;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#0F1310; --card:#161C18; --ink:#E7EBE4; --muted:#94A399;
+      --route:#54B892; --route-soft:#16261F; --signal:#EE8A47; --signal-soft:#2A1D12;
+      --line:#26302A; --line-strong:#374238;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0F1310; --card:#161C18; --ink:#E7EBE4; --muted:#94A399;
+    --route:#54B892; --route-soft:#16261F; --signal:#EE8A47; --signal-soft:#2A1D12;
+    --line:#26302A; --line-strong:#374238;
+  }
+  :root[data-theme="light"]{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#D5691F; --signal-soft:#F7E7D6;
+    --line:#D3D8D0; --line-strong:#BFC6BD;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;margin:0}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:clamp(28px,6vw,72px) clamp(18px,4vw,32px) 96px}
+  p{max-width:var(--readw)}
+  a{color:var(--route);text-decoration-thickness:1px;text-underline-offset:2px}
+
+  .eyebrow{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  h1{font-size:clamp(2rem,5.4vw,3.15rem);line-height:1.02;letter-spacing:-.03em;
+    font-weight:800;margin:0;text-wrap:balance}
+  h1 .thin{font-weight:400;color:var(--muted);letter-spacing:-.02em}
+  .lede{font-size:clamp(1.05rem,2.3vw,1.28rem);color:var(--ink);margin:22px 0 0;max-width:60ch}
+  .lede b{color:var(--route)}
+
+  .stamp{margin-top:30px;border:1px solid var(--line-strong);border-radius:12px;
+    background:var(--card);padding:16px 18px;max-width:60ch;display:flex;gap:14px;align-items:flex-start}
+  .stamp .dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--signal);margin-top:7px;
+    box-shadow:0 0 0 4px var(--signal-soft)}
+  .stamp p{margin:0;font-size:.93rem;color:var(--muted)}
+  .stamp b{color:var(--ink)}
+
+  hr.rule{border:0;border-top:1px solid var(--line);margin:clamp(44px,7vw,68px) 0}
+
+  h2{font-size:1.7rem;letter-spacing:-.02em;font-weight:800;margin:0 0 6px;text-wrap:balance}
+  .sec-tag{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--route);margin:0 0 22px;display:flex;align-items:center;gap:10px}
+  .sec-tag::before{content:"";height:1px;width:26px;background:var(--route);display:inline-block}
+
+  /* positioning strip */
+  .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .cell{background:var(--card);padding:18px 18px 20px}
+  .cell .k{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  .cell .v{margin:0;font-size:1rem;font-weight:600;line-height:1.35}
+
+  /* campaign cards */
+  .cards{display:flex;flex-direction:column;gap:26px}
+  .camp{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:clamp(20px,3vw,30px);position:relative;overflow:hidden}
+  .camp::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--route)}
+  .camp .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;margin-bottom:4px}
+  .camp .code{font-family:var(--font-mono);font-size:.74rem;color:var(--signal);letter-spacing:.08em;font-weight:600}
+  .camp h3{font-size:1.5rem;letter-spacing:-.02em;font-weight:800;margin:0}
+  .promise{font-size:1.06rem;color:var(--ink);font-weight:600;margin:8px 0 0;max-width:58ch;line-height:1.4}
+  .pain{font-size:.93rem;color:var(--muted);margin:8px 0 20px;max-width:60ch}
+  .pain b{color:var(--signal)}
+
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px 26px;margin-top:6px}
+  .field .lab{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+  .field .val{margin:0;font-size:.94rem;line-height:1.5}
+  .field .val strong{font-weight:700}
+
+  .journey{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 0;padding:0;list-style:none}
+  .journey li{font-family:var(--font-mono);font-size:.78rem;background:var(--route-soft);
+    color:var(--ink);border-radius:6px;padding:5px 9px;display:flex;align-items:center;gap:8px;line-height:1.2}
+  .journey li::after{content:"\2192";color:var(--route);margin-left:4px;font-weight:700}
+  .journey li:last-child::after{content:""}
+
+  .price{font-family:var(--font-mono);font-size:.95rem;line-height:1.7;margin:0;
+    font-variant-numeric:tabular-nums}
+  .price .lin{display:block}
+  .price .amt{color:var(--ink);font-weight:600}
+  .price .note{color:var(--muted);font-size:.82rem}
+
+  .tech{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+  .tech li{display:flex;gap:10px;align-items:baseline;font-size:.88rem;line-height:1.45}
+  .pill{flex:0 0 auto;font-family:var(--font-mono);font-size:.64rem;letter-spacing:.08em;
+    text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;min-width:74px;text-align:center}
+  .pill.free{background:var(--route);color:#fff}
+  .pill.paid{background:var(--signal);color:#fff}
+  .pill.road{background:transparent;color:var(--muted);border:1px solid var(--line-strong)}
+  :root[data-theme="dark"] .pill.free,:root[data-theme="dark"] .pill.paid{color:#0F1310}
+  @media (prefers-color-scheme:dark){.pill.free,.pill.paid{color:#0F1310}}
+  :root[data-theme="light"] .pill.free,:root[data-theme="light"] .pill.paid{color:#fff}
+
+  .metric{border-top:1px dashed var(--line-strong);margin-top:20px;padding-top:16px}
+  .metric .lab{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--signal);margin:0 0 6px}
+  .metric .val{margin:0;font-size:1.02rem;font-weight:700;line-height:1.4;max-width:60ch}
+
+  /* commercial model */
+  .model{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .mbox{border:1px solid var(--line);border-radius:12px;padding:18px 18px 20px;background:var(--card)}
+  .mbox h4{margin:0 0 4px;font-size:1.02rem;letter-spacing:-.01em}
+  .mbox p{margin:0;font-size:.9rem;color:var(--muted);max-width:none}
+  .mbox .mono{font-family:var(--font-mono);color:var(--route);font-size:.82rem;margin-top:10px;display:block}
+
+  /* schema */
+  .schema{font-family:var(--font-mono);font-size:.84rem;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:20px 20px;overflow-x:auto;line-height:1.85}
+  .schema .node{color:var(--route);font-weight:700}
+  .schema .cmt{color:var(--muted)}
+  .schema b{color:var(--signal);font-weight:600}
+
+  /* guardrails */
+  .no{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 22px}
+  .no li{font-size:.92rem;color:var(--ink);padding-left:24px;position:relative;line-height:1.45}
+  .no li::before{content:"\2715";position:absolute;left:0;top:1px;color:var(--signal);font-weight:700;font-size:.8rem}
+  .no li span{color:var(--muted)}
+
+  /* validation loop */
+  .loop{counter-reset:step;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px}
+  .loop li{display:flex;gap:16px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--line)}
+  .loop li:first-child{border-top:0}
+  .loop li::before{counter-increment:step;content:counter(step,decimal-leading-zero);
+    font-family:var(--font-mono);font-size:.8rem;color:var(--route);font-weight:700;flex:0 0 auto;padding-top:2px}
+  .loop .t{margin:0;font-weight:600;font-size:.98rem}
+  .loop .d{margin:3px 0 0;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+  footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--line);
+    font-family:var(--font-mono);font-size:.76rem;color:var(--muted);display:flex;
+    flex-wrap:wrap;gap:6px 18px;justify-content:space-between}
+
+  .fade{opacity:0;transform:translateY(10px);animation:rise .6s cubic-bezier(.2,.7,.3,1) forwards}
+  .fade:nth-child(2){animation-delay:.05s}.fade:nth-child(3){animation-delay:.1s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.fade{animation:none;opacity:1;transform:none}}
+  a:focus-visible,li:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="fade">
+    <p class="eyebrow">Documento de trabalho · v1 · a validar em campo</p>
+    <h1>Catálogo de Campanhas Vendáveis<br><span class="thin">jornadas gamificadas para feiras e eventos</span></h1>
+    <p class="lede">Não vendemos realidade aumentada. Vendemos <b>circulação, retorno e conversão</b> em espaços físicos — provados com dados. A RA entra como encantamento nos pontos, nunca como a promessa principal.</p>
+
+    <div class="stamp">
+      <span class="dot" aria-hidden="true"></span>
+      <p>Este catálogo é <b>instrumento de validação, não peça institucional.</b> A meta não é um PDF bonito — é levá-lo a 3–5 organizadores, ouvir objeções e sair com uma carta de intenção. <b>Construímos só a campanha que alguém aceitar pagar para testar.</b></p>
+    </div>
+  </header>
+
+  <hr class="rule">
+
+  <!-- POSITIONING -->
+  <section>
+    <p class="sec-tag">Posicionamento</p>
+    <h2>A frente é vertical. A arquitetura é horizontal.</h2>
+    <p style="margin:10px 0 24px;color:var(--muted)">O organizador não compra “computação espacial”. Ele compra mais gente voltando aos estandes dos expositores dele. Por baixo, os dados nascem genéricos para servir a qualquer espaço depois — sem prometer isso agora.</p>
+    <div class="grid4">
+      <div class="cell"><p class="k">Primeiro mercado</p><p class="v">Feiras e eventos com muitos expositores</p></div>
+      <div class="cell"><p class="k">Primeira dor</p><p class="v">O visitante vê algo, segue andando e não consegue voltar</p></div>
+      <div class="cell"><p class="k">Primeiro comprador</p><p class="v">O organizador — que revende cotas aos expositores</p></div>
+      <div class="cell"><p class="k">Métrica-mãe</p><p class="v">% que retorna ao expositor após salvar uma oferta</p></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- CAMPAIGNS -->
+  <section>
+    <p class="sec-tag">Três campanhas de evento + uma vertical</p>
+    <h2>O que colocamos na mesa</h2>
+    <p style="margin:10px 0 26px;color:var(--muted)">As três primeiras são o núcleo para feiras e eventos, ordenadas por facilidade de entregar e de comprar. A quarta é a vertical imobiliária — mesmo motor, outro comprador. A coluna <b style="color:var(--route)">tecnologia</b> diz a verdade sobre cada peça: o que já roda no stack atual, o que custa, e o que é promessa de roadmap.</p>
+
+    <div class="cards">
+
+      <!-- 1 -->
+      <article class="camp">
+        <div class="head"><span class="code">CAMP-01 · o núcleo</span></div>
+        <h3>Meus Achados</h3>
+        <p class="promise">“Seus visitantes salvam o que gostaram — e conseguem voltar para comprar.”</p>
+        <p class="pain">A dor mais cara da feira: o visitante encontra o produto certo, continua o passeio e <b>nunca mais acha o estande</b>. Venda perdida por falta de um “de volta”.</p>
+
+        <div class="row">
+          <div class="field">
+            <p class="lab">Jornada do visitante</p>
+            <ul class="journey">
+              <li>Escaneia QR da loja</li><li>Salva produto + preço + áudio</li><li>Recebe rota de volta</li><li>Confirma chegada</li><li>Resgata benefício</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:20px">
+          <div class="field">
+            <p class="lab">Comprador &amp; preço</p>
+            <p class="price">
+              <span class="lin"><span class="amt">Implantação R$ 6–15k</span> <span class="note">(fixo, por evento)</span></span>
+              <span class="lin"><span class="amt">Licença R$ 8–25k</span> <span class="note">/ evento</span></span>
+              <span class="lin note">Faixas indicativas — o preço real sai do teste.</span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="lab">Tecnologia</p>
+            <ul class="tech">
+              <li><span class="pill free">grátis</span> QR, favoritos, rota e analytics — stack atual</li>
+              <li><span class="pill paid">premium</span> Mascote 3D no ponto (model-viewer)</li>
+              <li><span class="pill road">roadmap</span> RA por imagem (MindAR) no estande</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="metric">
+          <p class="lab">Métrica central</p>
+          <p class="val">Taxa de retorno ao expositor após salvar — o número que liga a plataforma direto à venda.</p>
+        </div>
+      </article>
+
+      <!-- 2 -->
+      <article class="camp">
+        <div class="head"><span class="code">CAMP-02 · a receita</span></div>
+        <h3>Passaporte Patrocinado</h3>
+        <p class="promise">“Transforme seus expositores em patrocinadores — e abra uma nova fonte de receita.”</p>
+        <p class="pain">Uma trilha temática (“Enxoval Completo”, “Rota do Bebê”) onde <b>cada carimbo é uma cota vendável</b>. Você não vende um app; vende slots de patrocínio para quem já é seu cliente.</p>
+
+        <div class="row">
+          <div class="field">
+            <p class="lab">Jornada do visitante</p>
+            <ul class="journey">
+              <li>Pega o passaporte</li><li>Cumpre missão no checkpoint</li><li>Carimba</li><li>Completa a trilha</li><li>Recompensa final</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:20px">
+          <div class="field">
+            <p class="lab">Comprador &amp; preço (cotas)</p>
+            <p class="price">
+              <span class="lin"><span class="amt">Headline / Mascote R$ 8–20k</span> <span class="note">×1</span></span>
+              <span class="lin"><span class="amt">Checkpoint R$ 1,5–5k</span> <span class="note">×N</span></span>
+              <span class="lin"><span class="amt">Recompensa R$ 5–12k</span> <span class="note">×1</span></span>
+              <span class="lin note">Co-op: 4 marcas não-concorrentes rateiam a trilha.</span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="lab">Tecnologia</p>
+            <ul class="tech">
+              <li><span class="pill free">grátis</span> Checkpoints, missões, ranking, cupom — lógica atual</li>
+              <li><span class="pill paid">premium</span> Mascote comemorando em RA no ponto</li>
+              <li><span class="pill road">roadmap</span> Âncora contínua / VPS (só se cliente financiar)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="metric">
+          <p class="lab">Métrica central</p>
+          <p class="val">Checkpoints visitados → passaportes completos → cupons resgatados por marca — o relatório que renova a cota no ano seguinte.</p>
+        </div>
+      </article>
+
+      <!-- 3 -->
+      <article class="camp">
+        <div class="head"><span class="code">CAMP-03 · a atribuição</span></div>
+        <h3>Sampling Rastreável</h3>
+        <p class="promise">“Prove cada amostra entregue — a atribuição que o sampling físico nunca teve.”</p>
+        <p class="pain">Hoje a marca recebe “distribuímos 10 mil amostras”. Com isto, ela recebe o <b>funil inteiro, com prova de retirada</b> — e passa a pagar por resultado, não por caixa de brinde.</p>
+
+        <div class="row">
+          <div class="field">
+            <p class="lab">Jornada do visitante</p>
+            <ul class="journey">
+              <li>Desbloqueia voucher no app</li><li>Retira no estande (valida QR)</li><li>Cadastro opt-in</li><li>Cupom de recompra</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:20px">
+          <div class="field">
+            <p class="lab">Comprador &amp; preço</p>
+            <p class="price">
+              <span class="lin"><span class="amt">R$ 3–8</span> <span class="note">/ voucher validado</span></span>
+              <span class="lin"><span class="amt">Piso R$ 10k</span> <span class="note">/ campanha</span></span>
+              <span class="lin note">Híbrido primeiro (piso + variável); CPA puro só com benchmark.</span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="lab">Tecnologia</p>
+            <ul class="tech">
+              <li><span class="pill free">grátis</span> Emissão, validação, antifraude, painel — stack atual</li>
+              <li><span class="pill paid">premium</span> Demonstração do produto em 3D / RA</li>
+              <li><span class="pill road">roadmap</span> Retargeting físico (explícito, com opt-in)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="metric">
+          <p class="lab">Métrica central · com LGPD desde o dia 1</p>
+          <p class="val">Vouchers emitidos → retiradas confirmadas → cadastros autorizados → recompra. Consentimento explícito; nada de perfilamento invisível — ainda mais em público sensível.</p>
+        </div>
+      </article>
+
+      <!-- 4 -->
+      <article class="camp">
+        <div class="head"><span class="code">CAMP-04 · a emoção</span></div>
+        <h3>Veja sua casa antes de existir</h3>
+        <p class="promise">“Seu cliente aponta a câmera para o lote vazio e vê a casa pronta — vende emoção, não metragem quadrada.”</p>
+        <p class="pain">Planta 2D e maquete não emocionam. O casal não consegue se imaginar morando ali — e <b>a decisão de compra é emocional</b>. Aqui o <span style="white-space:nowrap">model-viewer</span> do stack atual brilha de verdade.</p>
+
+        <div class="row">
+          <div class="field">
+            <p class="lab">Jornada do cliente</p>
+            <ul class="journey">
+              <li>Placa-alvo no lote / stand</li><li>Aponta a câmera</li><li>Casa surge em RA</li><li>Alterna manhã / tarde / noite</li><li>Registra interesse (lead)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:20px">
+          <div class="field">
+            <p class="lab">Comprador &amp; preço</p>
+            <p class="price">
+              <span class="lin"><span class="amt">Modelo 3D R$ 8–30k</span> <span class="note">/ planta</span></span>
+              <span class="lin"><span class="amt">Licença R$ 5–15k</span> <span class="note">/ mês no stand</span></span>
+              <span class="lin note">Incorporadora, imobiliária, stand de vendas.</span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="lab">Tecnologia</p>
+            <ul class="tech">
+              <li><span class="pill free">grátis</span> Maquete de mesa via marcador (MindAR) — funciona no iPhone</li>
+              <li><span class="pill paid">premium</span> Modelos, dia/noite, narrativa emocional por IA</li>
+              <li><span class="pill road">roadmap</span> Casa em escala real caminhável no lote (WebXR; iOS limitado)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="metric">
+          <p class="lab">Métrica central · e um limite honesto</p>
+          <p class="val">Leads capturados por visita ao lote. Os personagens que dão vida à cena são <strong>ilustrativos — encantamento, nunca simulação de engenharia</strong> em que alguém baseie uma decisão de obra.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- COMMERCIAL MODEL -->
+  <section>
+    <p class="sec-tag">Modelo comercial</p>
+    <h2>Como o dinheiro entra</h2>
+    <p style="margin:10px 0 24px;color:var(--muted)">Começa híbrido e previsível. Cobrança por resultado é uma evolução — depois de ter benchmark próprio, não antes.</p>
+    <div class="model">
+      <div class="mbox"><h4>Setup</h4><p>Implantação, mapa e cadastro de expositores.</p><span class="mono">valor fixo</span></div>
+      <div class="mbox"><h4>Licença</h4><p>Uso da plataforma naquele evento.</p><span class="mono">fixo / evento</span></div>
+      <div class="mbox"><h4>Cotas patrocinadas</h4><p>Vendidas pelo organizador aos expositores.</p><span class="mono">por cota</span></div>
+      <div class="mbox"><h4>Serviços</h4><p>Modelagem 3D, mascote, campanha, operação no evento.</p><span class="mono">à parte</span></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- DATA MODEL -->
+  <section>
+    <p class="sec-tag">Apêndice técnico · o único “keeper” da visão grande</p>
+    <h2>Modelo de dados mínimo</h2>
+    <p style="margin:10px 0 20px">Não construímos o “sistema operacional espacial”. Só nomeamos as entidades de forma genérica para o MVP <strong>não nascer preso a uma feira</strong>. Custa quase nada hoje e preserva toda a ambição para depois. Um <code style="font-family:var(--font-mono);color:var(--route)">PhysicalNode</code> é loja, corredor, estande, monumento, fachada ou produto — o mesmo conceito em qualquer espaço.</p>
+    <div class="schema" role="img" aria-label="Esquema das oito entidades fundamentais">
+      <span class="cmt">// oito entidades — o suficiente para não ser descartável</span><br>
+      <span class="node">Environment</span>    <span class="cmt">// o espaço: feira, andar, praça, mapa</span><br>
+      <span class="node">PhysicalNode</span>   { id, environmentId, type, <b>anchorType</b>, anchorConfig, position, experiences[], rules, telemetry }<br>
+      <span class="node">Experience</span>     <span class="cmt">// o que acontece no nó: missão, mascote, quiz, cupom</span><br>
+      <span class="node">Campaign</span>       <span class="cmt">// agrupa experiências + patrocinador + período</span><br>
+      <span class="node">ParticipantSession</span> <span class="cmt">// o visitante na jornada (com consentimento)</span><br>
+      <span class="node">InteractionEvent</span> <span class="cmt">// escaneou, salvou, chegou, resgatou — a telemetria</span><br>
+      <span class="node">Reward</span>         <span class="cmt">// cupom, brinde, conquista</span><br>
+      <span class="node">Sponsor</span>        <span class="cmt">// dono da cota; alimenta leads ao ZappFlow via API</span>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- GUARDRAILS -->
+  <section>
+    <p class="sec-tag">Guarda-corpo</p>
+    <h2>O que <em>não</em> faremos agora</h2>
+    <p style="margin:10px 0 22px;color:var(--muted)">A visão fica no documento de princípios. O escopo imediato exclui, de propósito:</p>
+    <ul class="no">
+      <li>Simulação operacional de multidão <span>— é engenharia validada, outra empresa</span></li>
+      <li>Marketplace / editor self-service <span>— vem da repetição, não da largada</span></li>
+      <li>“Behavior Intelligence” como produto <span>— só compõe com escala</span></li>
+      <li>Fundir com o ZappFlow <span>— integra por API, não funde</span></li>
+      <li>Começar por estádio <span>— direitos e ciclo longo</span></li>
+      <li>VPS próprio <span>— âncora física resolve 80% de graça</span></li>
+      <li>Dezenas de modelos 3D <span>— custo recorrente, cobra à parte</span></li>
+      <li>Cinco verticais ao mesmo tempo <span>— um wedge, provado</span></li>
+    </ul>
+  </section>
+
+  <hr class="rule">
+
+  <!-- VALIDATION LOOP -->
+  <section>
+    <p class="sec-tag">Como usar este catálogo</p>
+    <h2>O loop de validação</h2>
+    <p style="margin:10px 0 24px;color:var(--muted)">A pergunta deixou de ser “até onde a plataforma pode chegar?”. Agora é: <strong style="color:var(--ink)">qual campanha um organizador aceitaria pagar para testar no próximo evento?</strong></p>
+    <ol class="loop">
+      <li><div><p class="t">Apresentar a 3–5 organizadores</p><p class="d">Uma reunião curta com este material aberto no celular. Nada de proposta longa.</p></div></li>
+      <li><div><p class="t">Registrar as objeções</p><p class="d">O que ele não entendeu, o que achou caro, o que faltou. As objeções são o produto.</p></div></li>
+      <li><div><p class="t">Identificar a campanha mais desejada</p><p class="d">Qual das três acende o olho dele — e por qual dor específica.</p></div></li>
+      <li><div><p class="t">Pedir intenção comercial ou piloto</p><p class="d">Carta de intenção, sinal, ou um evento-piloto com data. Compromisso real, não “gostei”.</p></div></li>
+      <li><div><p class="t">Construir só a vencedora</p><p class="d">Uma campanha, muito bem resolvida, operável num evento real. Medir. Repetir. Padronizar.</p></div></li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>Catálogo de Campanhas Vendáveis — v1</span>
+    <span><a href="mailto:eldastito@gmail.com">eldastito@gmail.com</a></span>
+    <span>Arquitetura horizontal · promessa vertical · piloto mensurável</span>
+  </footer>
+
+</div>
+</body>
+</html>
