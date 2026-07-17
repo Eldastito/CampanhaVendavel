@@ -101,6 +101,11 @@
   .curio .cn{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--signal-soft);color:var(--signal);font-family:var(--serif);font-weight:700;font-size:1.1rem;display:grid;place-items:center}
   .curio h3{margin:0 0 3px;font-size:1rem}.curio p{margin:0;font-size:.93rem}
   .note{font-size:.78rem;color:var(--muted);font-style:italic;margin:4px 0 0}
+  .narrate-btn{margin-top:14px;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;background:var(--route-soft);color:var(--route);
+    border:1px solid var(--route);border-radius:999px;padding:9px 16px}
+  .narrate-btn.playing{background:var(--route);color:#fff}
+  .narrate-btn:disabled{opacity:.5;cursor:default}
 
   .btn{font:inherit;font-weight:700;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--route);width:100%;margin-top:6px}
   .btn.primary{background:var(--route);color:#fff}.btn:disabled{opacity:.5;cursor:default}
@@ -157,6 +162,7 @@
       <p class="tag" id="d-flabel">Fundação</p>
       <p class="lead" id="d-fund">—</p>
       <div class="factline" id="d-chips"></div>
+      <button class="narrate-btn" id="narrate" type="button">🔊 Ouvir a apresentação</button>
     </div>
     <div class="block">
       <p class="tag">Duas curiosidades</p>
@@ -222,6 +228,27 @@
 
   const $ = id => document.getElementById(id);
   const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
+
+  // ===================== Narração por voz (Web Speech API, pt-BR) =====================
+  let speaking = false;
+  const synth = window.speechSynthesis || null;
+  function stripHtml(s){ const d=document.createElement('div'); d.innerHTML=s||''; return (d.textContent||'').replace(/\s+/g,' ').trim(); }
+  function stopSpeak(){ try{ synth && synth.cancel(); }catch(e){} speaking=false; const b=$('narrate'); if(b){ b.classList.remove('playing'); b.textContent='🔊 Ouvir a apresentação'; } }
+  function pickPtVoice(){ const vs=(synth&&synth.getVoices())||[]; return vs.find(v=>/pt[-_]?BR/i.test(v.lang)) || vs.find(v=>/^pt/i.test(v.lang)) || null; }
+  function speakCurrent(){
+    const b=$('narrate');
+    if(!synth){ if(b){ b.textContent='🔊 Narração indisponível'; b.disabled=true; } return; }
+    if(speaking){ stopSpeak(); return; }
+    const m = ROTEIRO.find(x=>x.id===current); if(!m) return;
+    const u = new SpeechSynthesisUtterance(m.nome + '. ' + stripHtml(m.fund));
+    u.lang='pt-BR'; u.rate=0.98; u.pitch=1;
+    const v = pickPtVoice(); if(v) u.voice=v;
+    u.onend=stopSpeak; u.onerror=stopSpeak;
+    synth.cancel(); synth.speak(u);
+    speaking=true; if(b){ b.classList.add('playing'); b.textContent='⏸ Parar narração'; }
+  }
+  // vozes carregam de forma assíncrona em alguns navegadores
+  if(synth && typeof synth.onvoiceschanged !== 'undefined'){ synth.onvoiceschanged = pickPtVoice; }
 
   // Explica na tela por que a RA (não) está disponível — em vez do botão sumir em silêncio.
   function updateArNote(mv){
@@ -309,7 +336,7 @@
 
   function openDetail(id){
     const m = ROTEIRO.find(x=>x.id===id); if(!m) return;
-    current = id; logEvent('scan', id);
+    current = id; stopSpeak(); logEvent('scan', id);
     $('d-eyebrow').textContent = 'Ponto ' + (ROTEIRO.indexOf(m)+1) + ' de ' + ROTEIRO.length;
     $('d-title').textContent = m.nome; $('d-sub').textContent = m.sub;
     $('d-flabel').textContent = m.flabel; $('d-fund').innerHTML = m.fund;
@@ -362,8 +389,9 @@
     if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', current); renderPanel(); show('reward'); }
     else { renderPanel(); show('home'); }
   };
-  $('back').onclick = ()=>show('home');
-  $('restart').onclick = ()=>{ visited={}; localEvents={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
+  $('narrate').onclick = speakCurrent;
+  $('back').onclick = ()=>{ stopSpeak(); show('home'); };
+  $('restart').onclick = ()=>{ stopSpeak(); visited={}; localEvents={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
   $('panelToggle').onclick = function(){ const p=$('panel'); const o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; if(o) renderPanel(); };
 
   boot();
