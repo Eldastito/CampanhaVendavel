@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Roteiro Cultural — Patrimônio em RA</title>
+<!-- model-viewer LOCAL: sem dependência de CDN (causa comum de tela preta) -->
+<script type="module" src="model-viewer.min.js"></script>
+<!-- Supabase LOCAL (UMD): expõe window.supabase, sem depender de CDN externo -->
+<script src="supabase.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#B08628; --signal-soft:#F3E9CF;
+    --line:#D3D8D0; --line-strong:#BFC6BD; --error:#B3362B; --error-soft:#F7E0DD;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;
+      --route:#54B892;--route-soft:#16261F;--signal:#D6AE56;--signal-soft:#2A2110;
+      --line:#26302A;--line-strong:#374238;--error:#E07B6F;--error-soft:#33150F;}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .app{max-width:500px;margin:0 auto;min-height:100dvh;
+    padding:calc(18px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+  .screen{display:none}.screen.active{display:block}
+
+  .eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);margin:0;font-weight:700}
+  h1{font-family:var(--serif);font-size:1.85rem;line-height:1.06;letter-spacing:-.01em;margin:6px 0 4px;font-weight:700}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+  .badge{display:inline-block;background:var(--signal-soft);color:var(--signal);border-radius:6px;
+    padding:2px 7px;font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .src{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;
+    text-transform:uppercase;padding:2px 6px;border-radius:5px;border:1px solid var(--line-strong);color:var(--muted)}
+  .src.live{color:var(--route);border-color:var(--route)}
+
+  .passport{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 14px;margin-bottom:18px}
+  .passport .lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .passport b{display:block;font-size:1rem;color:var(--ink);font-family:var(--sans)}
+  .seals{display:flex;gap:6px;margin-left:auto}
+  .seal{width:24px;height:24px;border-radius:50%;border:2px solid var(--line-strong);display:grid;place-items:center;
+    font-size:.72rem;color:var(--muted);font-family:var(--mono)}
+  .seal.on{background:var(--route);border-color:var(--route);color:#fff}
+
+  .points{display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:0}
+  .point{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:14px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;transition:transform .12s,border-color .2s}
+  .point:active{transform:scale(.99)}
+  .point.done{border-color:var(--route)}
+  .num{flex:0 0 auto;width:36px;height:36px;border-radius:10px;background:var(--signal-soft);color:var(--signal);
+    font-family:var(--serif);font-weight:700;display:grid;place-items:center}
+  .point.done .num{background:var(--route);color:#fff}
+  .point .info{flex:1;min-width:0}.point .info b{display:block;letter-spacing:-.01em}
+  .point .info span{color:var(--muted);font-size:.85rem}
+  .point .chev{color:var(--muted);font-size:1.2rem}
+
+  .panel-toggle{margin-top:18px;background:none;border:1px dashed var(--line-strong);color:var(--muted);
+    font:inherit;font-size:.8rem;border-radius:10px;padding:9px;cursor:pointer;width:100%}
+  .panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:14px;display:none}
+  .panel.open{display:block}
+  .panel h3{margin:0 0 8px;font-size:.72rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--signal)}
+  .panel .live-tag{font-family:var(--mono);font-size:.6rem;color:var(--route);margin:0 0 10px}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono)}
+  .kpi b{display:block;font-size:1.3rem;color:var(--route)}
+  .kpi span{color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
+
+  .back{background:none;border:0;color:var(--route);font:inherit;font-weight:600;padding:0;margin-bottom:12px;cursor:pointer}
+  .stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);
+    height:min(48vh,380px);margin-bottom:12px}
+  model-viewer{width:100%;height:100%;background:linear-gradient(180deg,var(--card),var(--paper))}
+  .ar-btn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;
+    background:var(--signal);color:#14201B;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;
+    box-shadow:0 8px 26px rgba(176,134,40,.4);cursor:pointer}
+  .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 12px}.hintbar b{color:var(--ink)}
+  .arnote{background:var(--signal-soft);border:1px solid var(--signal);color:var(--ink);
+    border-radius:12px;padding:11px 14px;margin:0 0 20px;font-size:.86rem;line-height:1.5}
+  .arnote b{color:var(--signal)}
+
+  .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
+  .status{position:absolute;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none;
+    color:var(--muted);font-size:.9rem;text-align:center;padding:20px}
+  .status.hide{display:none}
+  .errbox{position:absolute;left:10px;right:10px;bottom:10px;z-index:7;background:var(--error-soft);
+    border:1px solid var(--error);color:var(--error);border-radius:10px;padding:10px 12px;
+    font-family:var(--mono);font-size:.72rem;line-height:1.5;display:none;word-break:break-word}
+  .errbox.show{display:block}
+
+  .block{margin-bottom:20px}
+  .tag{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--route);display:flex;align-items:center;gap:9px;margin:0 0 8px}
+  .tag::before{content:"";height:1px;width:22px;background:var(--route)}
+  .lead{font-size:1.02rem;margin:0}.lead b{color:var(--ink)}
+  .factline{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+  .fact{font-family:var(--mono);font-size:.72rem;background:var(--route-soft);color:var(--ink);border-radius:7px;padding:6px 10px}
+  .fact b{color:var(--route)}
+  .curio{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+  .curio .cn{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--signal-soft);color:var(--signal);font-family:var(--serif);font-weight:700;font-size:1.1rem;display:grid;place-items:center}
+  .curio h3{margin:0 0 3px;font-size:1rem}.curio p{margin:0;font-size:.93rem}
+  .note{font-size:.78rem;color:var(--muted);font-style:italic;margin:4px 0 0}
+  .narrate-btn{margin-top:14px;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;background:var(--route-soft);color:var(--route);
+    border:1px solid var(--route);border-radius:999px;padding:9px 16px}
+  .narrate-btn.playing{background:var(--route);color:#fff}
+  .narrate-btn:disabled{opacity:.5;cursor:default}
+
+  .btn{font:inherit;font-weight:700;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--route);width:100%;margin-top:6px}
+  .btn.primary{background:var(--route);color:#fff}.btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:transparent;color:var(--route)}
+
+  .reward{text-align:center}.reward .medal{font-size:3rem;margin:8px 0}
+  .coupon{border:2px dashed var(--signal);border-radius:14px;padding:16px;margin:16px 0;background:var(--signal-soft)}
+  .coupon .code{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.1em}
+
+  .foot{margin-top:20px;font-family:var(--mono);font-size:.66rem;color:var(--muted);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <div id="home" class="screen active">
+    <p class="eyebrow">Roteiro Cultural · <span class="badge">demo</span><span id="src" class="src">offline</span></p>
+    <h1>Patrimônio em Realidade Aumentada</h1>
+    <p class="sub">Três obras, três histórias. Em cada ponto, a arte aparece em <b>RA</b> no seu espaço. Complete o passaporte e ganhe um brinde.</p>
+
+    <div class="passport">
+      <div><span class="lbl">Passaporte</span><b id="seal-count">0 selos</b></div>
+      <div class="seals" id="seals"></div>
+    </div>
+
+    <ul class="points" id="points"></ul>
+
+    <button class="panel-toggle" id="panelToggle">▸ Ver painel do organizador (o que a Secretaria enxerga)</button>
+    <div class="panel" id="panel">
+      <h3>Telemetria</h3>
+      <p class="live-tag" id="liveTag">● dados desta sessão</p>
+      <div class="kpis">
+        <div class="kpi"><b id="k-scan">0</b><span>Visitas a pontos</span></div>
+        <div class="kpi"><b id="k-ar">0</b><span>RA aberta</span></div>
+        <div class="kpi"><b id="k-seal">0</b><span>Selos coletados</span></div>
+        <div class="kpi"><b id="k-reward">0</b><span>Brindes</span></div>
+      </div>
+    </div>
+
+    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para qualquer acervo ou cidade.</p>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="detail" class="screen">
+    <button class="back" id="back">← Voltar ao roteiro</button>
+    <p class="eyebrow" id="d-eyebrow">—</p>
+    <h1 id="d-title" style="font-size:1.5rem">—</h1>
+    <p class="sub" id="d-sub" style="margin-bottom:12px">—</p>
+    <div class="stage" id="stage"></div>
+    <p class="hintbar">Gire com o dedo · toque em <b>Ver em RA</b> para trazer ao seu ambiente</p>
+    <p class="arnote" id="arnote" style="display:none"></p>
+    <div class="block">
+      <p class="tag" id="d-flabel">Fundação</p>
+      <p class="lead" id="d-fund">—</p>
+      <div class="factline" id="d-chips"></div>
+      <button class="narrate-btn" id="narrate" type="button">🔊 Ouvir a apresentação</button>
+    </div>
+    <div class="block">
+      <p class="tag">Duas curiosidades</p>
+      <div id="d-curios"></div>
+      <p class="note" id="d-note" style="display:none"></p>
+    </div>
+    <button class="btn primary" id="collect">Coletar selo deste ponto</button>
+  </div>
+
+  <!-- REWARD -->
+  <div id="reward" class="screen">
+    <div class="reward">
+      <div class="medal">🏅</div>
+      <h1>Roteiro concluído!</h1>
+      <p class="sub">Você percorreu as três obras e completou o passaporte cultural.</p>
+      <div class="coupon">
+        <p class="eyebrow" style="text-align:center">Seu brinde</p>
+        <div class="code">CULTURA-2026</div>
+        <p class="sub" style="margin:8px 0 0;font-size:.85rem">Apresente na bilheteria para retirar.</p>
+      </div>
+      <button class="btn ghost" id="restart">Refazer o roteiro</button>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  // ===================== Configuração do backend =====================
+  const SB_URL  = 'https://uhyzpmzxkgprjevnojpf.supabase.co';
+  const SB_KEY  = 'sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
+  const ENV_SLUG = 'rio-centro';
+
+  // ===================== Roteiro de fallback (offline) =====================
+  // Se o banco falhar, o app usa isto — nunca fica sem conteúdo na frente do cliente.
+  const FALLBACK = [
+    { id:'teatro', nome:'Theatro Municipal', sub:'Rio de Janeiro · Cinelândia · desde 1909',
+      glb:'teatro-municipal.glb', usdz:'teatro-municipal.usdz', flabel:'Fundação',
+      fund:'Inaugurado em <b>14 de julho de 1909</b> pelo presidente Nilo Peçanha, coroou a reforma que abriu a Avenida Central (atual Rio Branco). Projeto de <b>Francisco de Oliveira Passos</b> com o francês <b>Albert Guilbert</b>, inspirado na Ópera de Paris. Obra iniciada em 1905.',
+      chips:['<b>1909</b> inauguração','<b>1905</b> início','estilo <b>eclético</b>'],
+      curios:[{h:'Erguido sobre a água',p:'O terreno era alagadiço: fundado sobre cerca de <b>1.600 estacas de madeira</b> cravadas no lençol freático.'},
+              {h:'Arte por dentro — e um restaurante assírio',p:'<b>Eliseu Visconti</b> pintou o teto e o pano de boca. No subsolo, o restaurante <b>Assírio</b>, inspirado na antiga Pérsia.'}] },
+    { id:'pegaso', nome:'Pégaso', sub:'O cavalo alado das artes',
+      glb:'pegasus.glb', usdz:'pegasus.usdz', flabel:'O símbolo',
+      fund:'Na mitologia grega, <b>Pégaso</b> é o cavalo alado nascido do sangue de Medusa. Símbolo da inspiração poética e das artes.',
+      chips:['mitologia <b>grega</b>','símbolo das <b>artes</b>'],
+      curios:[{h:'A fonte das Musas',p:'Ao bater o casco no monte Hélicon, Pégaso fez brotar a fonte <b>Hipocrene</b> — inspiração dos poetas.'},
+              {h:'No topo da Ópera de Paris',p:'O <b>Palais Garnier</b> exibe grupos dourados de Pégaso, obra de Charles Gumery.'}],
+      note:'Conteúdo simbólico — procedência específica a confirmar.' },
+    { id:'pietat', nome:'Pietat', sub:'Museu Frederic Marès · Barcelona',
+      glb:'pietat.glb', usdz:'pietat.usdz', flabel:'A obra',
+      fund:'A <b>Pietat</b> — a Virgem amparando o corpo do filho morto — pertence ao acervo do <b>Museu Frederic Marès</b>, em Barcelona.',
+      chips:['tema <b>Pietà</b>','acervo <b>Marès</b>','digitalização <b>3D</b>'],
+      curios:[{h:'O museu de um escultor',p:'<b>Frederic Marès</b> (1893–1991) doou à cidade um dos maiores acervos de escultura da Espanha.'},
+              {h:'A joia da casa é uma Pietat',p:'A peça mais celebrada é a Pietat de <b>Juan de Juni</b> (c. 1537).'}],
+      note:'Digitalização 3D de acervo. Identificação a confirmar.' }
+  ];
+
+  // ===================== Estado =====================
+  let sb = null, envId = null, sessionId = null, online = false;
+  let ROTEIRO = FALLBACK;
+  let visited = {}, current = null, curNodeId = null;
+  let localEvents = { scan:0, ar:0, seal:0, reward:0 };
+
+  const keyOf = m => m.code || m.id;       // identidade estável (mesma online/offline)
+  const $ = id => document.getElementById(id);
+  const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
+
+  // ===================== Narração por voz (Web Speech API, pt-BR) =====================
+  let speaking = false;
+  const synth = window.speechSynthesis || null;
+  function stripHtml(s){ const d=document.createElement('div'); d.innerHTML=s||''; return (d.textContent||'').replace(/\s+/g,' ').trim(); }
+  function stopSpeak(){ try{ synth && synth.cancel(); }catch(e){} speaking=false; const b=$('narrate'); if(b){ b.classList.remove('playing'); b.textContent='🔊 Ouvir a apresentação'; } }
+  function pickPtVoice(){ const vs=(synth&&synth.getVoices())||[]; return vs.find(v=>/pt[-_]?BR/i.test(v.lang)) || vs.find(v=>/^pt/i.test(v.lang)) || null; }
+  function speakCurrent(){
+    const b=$('narrate');
+    if(!synth){ if(b){ b.textContent='🔊 Narração indisponível'; b.disabled=true; } return; }
+    if(speaking){ stopSpeak(); return; }
+    const m = ROTEIRO.find(x=>x.id===current); if(!m) return;
+    const u = new SpeechSynthesisUtterance(m.nome + '. ' + stripHtml(m.fund));
+    u.lang='pt-BR'; u.rate=0.98; u.pitch=1;
+    const v = pickPtVoice(); if(v) u.voice=v;
+    u.onend=stopSpeak; u.onerror=stopSpeak;
+    synth.cancel(); synth.speak(u);
+    speaking=true; if(b){ b.classList.add('playing'); b.textContent='⏸ Parar narração'; }
+  }
+  // vozes carregam de forma assíncrona em alguns navegadores
+  if(synth && typeof synth.onvoiceschanged !== 'undefined'){ synth.onvoiceschanged = pickPtVoice; }
+
+  // Explica na tela por que a RA (não) está disponível — em vez do botão sumir em silêncio.
+  function updateArNote(mv){
+    const el = $('arnote'); if(!el || !mv) return;
+    const ua = navigator.userAgent || '';
+    const mobile = /Android|iPhone|iPad|iPod/i.test(ua);
+    const inApp  = /(FBAN|FBAV|Instagram|Line\/|WhatsApp|WhatsApp\/|WeChat|MicroMessenger|Twitter|GSA)/i.test(ua);
+    if(mv.canActivateAR){ el.style.display='none'; return; }   // botão de RA está visível
+    let msg;
+    if(!mobile){
+      msg = '📱 A <b>Realidade Aumentada</b> funciona no celular. Abra este mesmo link no seu telefone — Safari (iPhone) ou Chrome (Android).';
+    } else if(inApp){
+      msg = '↗ Abra no <b>navegador do celular</b> (Safari/Chrome), não aqui dentro do app. Toque no menu “···” e escolha “Abrir no navegador”, depois toque em Ver em RA.';
+    } else {
+      msg = 'Seu navegador não liberou a RA. No <b>iPhone</b> use o Safari; no <b>Android</b>, confira se o app “Google Play Services para RA” está instalado e atualizado.';
+    }
+    el.innerHTML = msg; el.style.display='block';
+  }
+
+  // ===================== Conexão + carga do roteiro =====================
+  const withTimeout = (p, ms) => Promise.race([ p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)) ]);
+
+  async function boot(){
+    // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
+    ROTEIRO = FALLBACK; renderHome(); renderPanel();
+    handleDeepLink();                        // veio de um QR? abre o ponto já
+    // 2) Em segundo plano, tenta subir para dados "ao vivo" (com timeout).
+    try{
+      if(!window.supabase || !window.supabase.createClient) throw new Error('supabase.js não carregou');
+      sb = window.supabase.createClient(SB_URL, SB_KEY);
+      const { data: env, error: e1 } = await withTimeout(
+        sb.from('environments').select('id,name').eq('slug', ENV_SLUG).single(), 8000);
+      if(e1 || !env) throw e1 || new Error('roteiro não encontrado');
+      envId = env.id;
+      const { data: nodes, error: e2 } = await withTimeout(sb.from('physical_nodes')
+        .select('id,label,subtitle,anchor_value,order_index,experiences(title,body,model_glb_url,model_usdz_url,data)')
+        .eq('environment_id', envId).order('order_index'), 8000);
+      if(e2 || !nodes || !nodes.length) throw e2 || new Error('sem pontos');
+      ROTEIRO = nodes.map(n => {
+        const x = (n.experiences && n.experiences[0]) || {};
+        const d = x.data || {};
+        return { id:n.id, code:(n.anchor_value ? String(n.anchor_value).split(':').pop() : n.id),
+          nome:n.label, sub:n.subtitle||'',
+          glb:x.model_glb_url, usdz:x.model_usdz_url,
+          flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'' };
+      });
+      const anonId = 'anon-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+      const { data: s } = await sb.from('participant_sessions')
+        .insert({ environment_id: envId, anon_id: anonId, consent_analytics: true }).select('id').single();
+      sessionId = s ? s.id : null;
+      online = true;
+      $('src').textContent = 'ao vivo'; $('src').classList.add('live');
+      $('liveTag').textContent = '● dados reais de todos os visitantes';
+      renderHome(); renderPanel();          // troca fallback -> dados do banco
+    }catch(err){
+      console.warn('[CampanhaVendavel] modo offline:', err && err.message);
+      online = false;                        // fallback já está na tela
+    }
+    handleDeepLink();                        // se veio de um QR, abre o ponto
+  }
+
+  // QR físico: link como  ...?node=teatro  abre direto aquele ponto.
+  function resolveByCode(code){ return ROTEIRO.find(x => (x.code||x.id)===code); }
+  function handleDeepLink(){
+    let code = null;
+    try{ code = new URLSearchParams(location.search).get('node'); }catch(e){}
+    if(!code) return;
+    code = code.trim();
+    // já aberto neste ponto? (2ª chamada após subir "ao vivo") — não reabre
+    if($('detail').classList.contains('active') && current === code){
+      if(online && !curNodeId){                     // atualiza id p/ telemetria online
+        const mm = resolveByCode(code); if(mm) { curNodeId = mm.id; logEvent('scan', curNodeId); }
+      }
+      return;
+    }
+    const m = resolveByCode(code);
+    if(m) openDetail(keyOf(m));
+  }
+
+  async function logEvent(kind, nodeId){
+    localEvents[kind==='ar_open'?'ar':(kind==='complete'?'seal':(kind==='redeem'?'reward':'scan'))]++;
+    if(online && sb && sessionId){
+      try{ await sb.from('interaction_events').insert({ session_id:sessionId, environment_id:envId, node_id:nodeId||null, kind }); }
+      catch(e){ /* silencioso: telemetria nunca quebra a experiência */ }
+    }
+  }
+
+  // ===================== Render =====================
+  function renderHome(){
+    const ul = $('points'); ul.innerHTML = '';
+    const seals = $('seals'); seals.innerHTML = '';
+    ROTEIRO.forEach((m,i)=>{
+      const done = !!visited[keyOf(m)];
+      const b = document.createElement('button');
+      b.className = 'point' + (done?' done':'');
+      b.innerHTML = '<span class="num">'+(done?'✓':(i+1))+'</span>'+
+        '<span class="info"><b>'+m.nome+'</b><span>'+m.sub+'</span></span><span class="chev">›</span>';
+      b.onclick = ()=>openDetail(keyOf(m));
+      ul.appendChild(b);
+      const sd = document.createElement('div');
+      sd.className = 'seal' + (done?' on':''); sd.textContent = done?'✓':(i+1);
+      seals.appendChild(sd);
+    });
+    $('seal-count').textContent = Object.keys(visited).length + ' de ' + ROTEIRO.length + ' selos';
+  }
+
+  function openDetail(key){
+    const m = ROTEIRO.find(x=>keyOf(x)===key) || ROTEIRO.find(x=>x.id===key); if(!m) return;
+    current = keyOf(m); curNodeId = online ? m.id : null; stopSpeak(); logEvent('scan', curNodeId);
+    $('d-eyebrow').textContent = 'Ponto ' + (ROTEIRO.indexOf(m)+1) + ' de ' + ROTEIRO.length;
+    $('d-title').textContent = m.nome; $('d-sub').textContent = m.sub;
+    $('d-flabel').textContent = m.flabel; $('d-fund').innerHTML = m.fund;
+    $('d-chips').innerHTML = (m.chips||[]).map(c=>'<span class="fact">'+c+'</span>').join('');
+    $('d-curios').innerHTML = (m.curios||[]).map((c,i)=>'<div class="curio"><span class="cn">'+(i===0?'I':'II')+'</span><div><h3>'+c.h+'</h3><p>'+c.p+'</p></div></div>').join('');
+    const note = $('d-note');
+    if(m.note){ note.style.display='block'; note.textContent = m.note; } else note.style.display='none';
+
+    const stage = $('stage'); stage.innerHTML = '';
+    const bar = document.createElement('div'); bar.className='loadbar';
+    const st  = document.createElement('div'); st.className='status'; st.textContent='Carregando obra em 3D…';
+    const eb  = document.createElement('div'); eb.className='errbox';
+    const mv = document.createElement('model-viewer');
+    mv.setAttribute('src', m.glb); mv.setAttribute('ios-src', m.usdz); mv.setAttribute('alt', m.nome);
+    mv.setAttribute('ar',''); mv.setAttribute('ar-modes','webxr scene-viewer quick-look'); mv.setAttribute('ar-scale','auto');
+    mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
+    mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 75deg 108%'); mv.setAttribute('exposure','1.05');
+    mv.addEventListener('progress', ev=>{ const p=(ev.detail&&ev.detail.totalProgress)||0; bar.style.width=Math.round(p*100)+'%'; if(p>=1){bar.style.width='100%'; setTimeout(()=>bar.style.display='none',400);} });
+    mv.addEventListener('load', ()=>{ st.classList.add('hide'); updateArNote(mv); });
+    mv.addEventListener('ar-status', ()=>updateArNote(mv));
+    setTimeout(()=>updateArNote(mv), 1600); // fallback caso 'load' já tenha disparado
+    mv.addEventListener('error', ev=>{ st.classList.add('hide'); const d=ev.detail||{}; eb.textContent='⚠ Falha ao carregar '+m.glb+'. '+((d.sourceError&&d.sourceError.message)||'Verifique se os .glb foram publicados junto com a página.'); eb.classList.add('show'); });
+    const arBtn = document.createElement('button'); arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent='🏛️ Ver em RA';
+    arBtn.addEventListener('click', ()=>logEvent('ar_open', curNodeId));
+    mv.appendChild(arBtn); stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st); stage.appendChild(eb);
+
+    const c = $('collect');
+    if(visited[keyOf(m)]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
+    else { c.disabled=false; c.textContent='Coletar selo deste ponto'; }
+    show('detail');
+  }
+
+  async function renderPanel(){
+    if(online && sb){
+      try{
+        const { data } = await sb.rpc('roteiro_stats', { env_slug: ENV_SLUG });
+        const map = { scan:0, ar_open:0, complete:0, redeem:0 };
+        (data||[]).forEach(r=>{ if(r.kind in map) map[r.kind]=Number(r.total); });
+        $('k-scan').textContent=map.scan; $('k-ar').textContent=map.ar_open; $('k-seal').textContent=map.complete; $('k-reward').textContent=map.redeem;
+        return;
+      }catch(e){ /* cai para local */ }
+    }
+    $('k-scan').textContent=localEvents.scan; $('k-ar').textContent=localEvents.ar; $('k-seal').textContent=localEvents.seal; $('k-reward').textContent=localEvents.reward;
+  }
+
+  // ===================== Ações =====================
+  $('collect').onclick = async ()=>{
+    if(!current || visited[current]) return;
+    visited[current] = true; await logEvent('complete', curNodeId); renderHome();
+    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', curNodeId); renderPanel(); show('reward'); }
+    else { renderPanel(); show('home'); }
+  };
+  $('narrate').onclick = speakCurrent;
+  $('back').onclick = ()=>{ stopSpeak(); show('home'); };
+  $('restart').onclick = ()=>{ stopSpeak(); visited={}; localEvents={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
+  $('panelToggle').onclick = function(){ const p=$('panel'); const o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; if(o) renderPanel(); };
+
+  boot();
+</script>
+</body>
+</html>

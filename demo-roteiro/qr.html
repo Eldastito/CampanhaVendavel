@@ -99,7 +99,7 @@
     var base = normalizeBase(document.getElementById('base').value);
     var grid = document.getElementById('grid'); grid.innerHTML = '';
     PONTOS.forEach(function(p){
-      var url = base ? (base + '/?node=' + encodeURIComponent(p.code)) : ('?node=' + p.code);
+      var url = base ? (base + '/roteiro.html?node=' + encodeURIComponent(p.code)) : ('roteiro.html?node=' + p.code);
       var card = document.createElement('div'); card.className = 'qcard';
       card.innerHTML =
         '<p class="eyebrow">Aponte a câmera</p>' +
