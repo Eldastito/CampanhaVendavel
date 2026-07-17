@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>Roteiro Cultural do Rio — Patrimônio em RA</title>
-<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<title>Roteiro Cultural — Patrimônio em RA</title>
+<!-- model-viewer LOCAL: sem dependência de CDN (causa comum de tela preta) -->
+<script type="module" src="model-viewer.min.js"></script>
 <style>
   :root{
     --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
     --route:#1D6B52; --route-soft:#E4EEE8; --signal:#B08628; --signal-soft:#F3E9CF;
-    --line:#D3D8D0; --line-strong:#BFC6BD;
+    --line:#D3D8D0; --line-strong:#BFC6BD; --error:#B3362B; --error-soft:#F7E0DD;
     --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -17,7 +18,7 @@
   @media (prefers-color-scheme:dark){
     :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;
       --route:#54B892;--route-soft:#16261F;--signal:#D6AE56;--signal-soft:#2A2110;
-      --line:#26302A;--line-strong:#374238;}
+      --line:#26302A;--line-strong:#374238;--error:#E07B6F;--error-soft:#33150F;}
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
@@ -31,7 +32,6 @@
   .badge{display:inline-block;background:var(--signal-soft);color:var(--signal);border-radius:6px;
     padding:2px 7px;font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
 
-  /* passport */
   .passport{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
     border-radius:14px;padding:12px 14px;margin-bottom:18px}
   .passport .lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
@@ -41,7 +41,6 @@
     font-size:.72rem;color:var(--muted);font-family:var(--mono)}
   .seal.on{background:var(--route);border-color:var(--route);color:#fff}
 
-  /* points list */
   .points{display:flex;flex-direction:column;gap:12px;list-style:none;padding:0;margin:0}
   .point{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);
     border-radius:14px;padding:14px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;transition:transform .12s,border-color .2s}
@@ -64,7 +63,6 @@
   .kpi b{display:block;font-size:1.3rem;color:var(--route)}
   .kpi span{color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
 
-  /* detail */
   .back{background:none;border:0;color:var(--route);font:inherit;font-weight:600;padding:0;margin-bottom:12px;cursor:pointer}
   .stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);
     height:min(48vh,380px);margin-bottom:12px}
@@ -73,6 +71,16 @@
     background:var(--signal);color:#14201B;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;
     box-shadow:0 8px 26px rgba(176,134,40,.4);cursor:pointer}
   .hintbar{text-align:center;color:var(--muted);font-size:.8rem;margin:0 0 20px}.hintbar b{color:var(--ink)}
+
+  /* status/erro na tela — nunca mais tela preta muda */
+  .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
+  .status{position:absolute;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none;
+    color:var(--muted);font-size:.9rem;text-align:center;padding:20px}
+  .status.hide{display:none}
+  .errbox{position:absolute;left:10px;right:10px;bottom:10px;z-index:7;background:var(--error-soft);
+    border:1px solid var(--error);color:var(--error);border-radius:10px;padding:10px 12px;
+    font-family:var(--mono);font-size:.72rem;line-height:1.5;display:none;word-break:break-word}
+  .errbox.show{display:block}
 
   .block{margin-bottom:20px}
   .tag{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--route);display:flex;align-items:center;gap:9px;margin:0 0 8px}
@@ -88,12 +96,11 @@
 
   .btn{font:inherit;font-weight:700;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--route);width:100%;margin-top:6px}
   .btn.primary{background:var(--route);color:#fff}.btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:transparent;color:var(--route)}
 
-  /* reward */
   .reward{text-align:center}.reward .medal{font-size:3rem;margin:8px 0}
   .coupon{border:2px dashed var(--signal);border-radius:14px;padding:16px;margin:16px 0;background:var(--signal-soft)}
   .coupon .code{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.1em}
-  .btn.ghost{background:transparent;color:var(--route)}
 
   .foot{margin-top:20px;font-family:var(--mono);font-size:.66rem;color:var(--muted);text-align:center;line-height:1.7}
 </style>
@@ -103,9 +110,9 @@
 
   <!-- HOME -->
   <div id="home" class="screen active">
-    <p class="eyebrow">Roteiro Cultural do Rio · <span class="badge">demo</span></p>
+    <p class="eyebrow">Roteiro Cultural · <span class="badge">demo</span></p>
     <h1>Patrimônio em Realidade Aumentada</h1>
-    <p class="sub">Visite os pontos do roteiro. Em cada um, a obra aparece em <b>RA</b> e conta sua história. Complete o passaporte e ganhe um brinde.</p>
+    <p class="sub">Três obras, três histórias. Em cada ponto, a arte aparece em <b>RA</b> no seu espaço. Complete o passaporte e ganhe um brinde.</p>
 
     <div class="passport">
       <div><span class="lbl">Passaporte</span><b id="seal-count">0 selos</b></div>
@@ -125,7 +132,7 @@
       </div>
     </div>
 
-    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para todo o Centro histórico.</p>
+    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para qualquer acervo ou cidade.</p>
   </div>
 
   <!-- DETAIL -->
@@ -154,10 +161,10 @@
     <div class="reward">
       <div class="medal">🏅</div>
       <h1>Roteiro concluído!</h1>
-      <p class="sub">Você percorreu o roteiro e completou o passaporte cultural.</p>
+      <p class="sub">Você percorreu as três obras e completou o passaporte cultural.</p>
       <div class="coupon">
         <p class="eyebrow" style="text-align:center">Seu brinde</p>
-        <div class="code">CULTURA-RIO</div>
+        <div class="code">CULTURA-2026</div>
         <p class="sub" style="margin:8px 0 0;font-size:.85rem">Apresente na bilheteria para retirar.</p>
       </div>
       <button class="btn ghost" id="restart">Refazer o roteiro</button>
@@ -170,7 +177,7 @@
 (function(){
   var ROTEIRO = [
     {
-      id:'teatro', nome:'Theatro Municipal', sub:'Cinelândia · desde 1909',
+      id:'teatro', nome:'Theatro Municipal', sub:'Rio de Janeiro · Cinelândia · desde 1909',
       glb:'teatro-municipal.glb', usdz:'teatro-municipal.usdz',
       flabel:'Fundação',
       fund:'Inaugurado em <b>14 de julho de 1909</b> pelo presidente Nilo Peçanha, coroou a reforma que abriu a Avenida Central (atual Rio Branco). Projeto de <b>Francisco de Oliveira Passos</b> — filho do prefeito Pereira Passos — com o francês <b>Albert Guilbert</b>, inspirado na Ópera de Paris. Obra iniciada em 1905.',
@@ -191,6 +198,18 @@
         {h:'No topo da Ópera de Paris', p:'O <b>Palais Garnier</b>, que inspirou o Theatro Municipal, exibe grupos dourados de Pégaso segurados pela Fama, obra de Charles Gumery.'}
       ],
       note:'Conteúdo simbólico — a procedência específica desta escultura será atualizada com os dados locais.'
+    },
+    {
+      id:'pietat', nome:'Pietat', sub:'Museu Frederic Marès · Barcelona',
+      glb:'pietat.glb', usdz:'pietat.usdz',
+      flabel:'A obra',
+      fund:'A <b>Pietat</b> — a Virgem amparando o corpo do filho morto — é um dos temas mais tocantes da arte cristã. Esta peça pertence ao acervo do <b>Museu Frederic Marès</b>, em Barcelona, instalado no Palau Reial Major e dedicado à escultura, da era pré-romana ao século XX.',
+      chips:['tema <b>Pietà</b>','acervo <b>Marès</b>','digitalização <b>3D</b>'],
+      curios:[
+        {h:'O museu de um escultor', p:'<b>Frederic Marès</b> (1893–1991) era ele próprio escultor — e um colecionador voraz. Doou à cidade um dos maiores acervos de escultura da Espanha.'},
+        {h:'A joia da casa é uma Pietat', p:'A peça mais celebrada do museu é a Pietat de <b>Juan de Juni</b> (c. 1537) — a única obra do mestre castelhano preservada em um museu catalão.'}
+      ],
+      note:'Digitalização 3D de acervo (Scan the World). A identificação exata da peça será confirmada na versão final.'
     }
   ];
 
@@ -199,6 +218,18 @@
   function $(id){ return document.getElementById(id); }
   function show(s){ document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');}); $(s).classList.add('active'); window.scrollTo(0,0); }
   function track(k){ if(k in events){ events[k]++; renderPanel(); } }
+
+  // ---- diagnóstico visível: erros nunca mais somem em tela preta ----
+  function showErr(msg){
+    var e = document.querySelector('#stage .errbox');
+    if(e){ e.textContent = '⚠ ' + msg; e.classList.add('show'); }
+  }
+  window.addEventListener('error', function(ev){
+    if(ev && ev.message) showErr(ev.message);
+  });
+  if(!('customElements' in window)){
+    alert('Este navegador não suporta os recursos 3D necessários.');
+  }
 
   function renderHome(){
     var ul = $('points'); ul.innerHTML = '';
@@ -215,8 +246,7 @@
       sd.className = 'seal' + (done?' on':''); sd.textContent = done?'✓':(i+1);
       seals.appendChild(sd);
     });
-    var n = Object.keys(visited).length;
-    $('seal-count').textContent = n + ' de ' + ROTEIRO.length + ' selos';
+    $('seal-count').textContent = Object.keys(visited).length + ' de ' + ROTEIRO.length + ' selos';
   }
 
   function openDetail(id){
@@ -234,19 +264,34 @@
     var note = $('d-note');
     if(m.note){ note.style.display='block'; note.textContent = m.note; } else { note.style.display='none'; }
 
-    // injeta model-viewer só agora (carrega o modelo sob demanda)
     var stage = $('stage'); stage.innerHTML = '';
+    // barra de progresso + status + caixa de erro
+    var bar = document.createElement('div'); bar.className='loadbar';
+    var st  = document.createElement('div'); st.className='status'; st.textContent='Carregando obra em 3D…';
+    var eb  = document.createElement('div'); eb.className='errbox';
     var mv = document.createElement('model-viewer');
     mv.setAttribute('src', m.glb);
     mv.setAttribute('ios-src', m.usdz);
     mv.setAttribute('alt', m.nome);
     mv.setAttribute('ar',''); mv.setAttribute('ar-modes','webxr scene-viewer quick-look'); mv.setAttribute('ar-scale','auto');
     mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
-    mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 72deg 110%'); mv.setAttribute('exposure','1.05');
+    mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','35deg 75deg 108%'); mv.setAttribute('exposure','1.05');
+    mv.addEventListener('progress', function(ev){
+      var p = ev.detail && ev.detail.totalProgress || 0;
+      bar.style.width = Math.round(p*100) + '%';
+      if(p >= 1){ bar.style.width='100%'; setTimeout(function(){ bar.style.display='none'; }, 400); }
+    });
+    mv.addEventListener('load', function(){ st.classList.add('hide'); });
+    mv.addEventListener('error', function(ev){
+      st.classList.add('hide');
+      var d = ev.detail || {};
+      showErr('Falha ao carregar o modelo 3D ('+ m.glb +'). ' + (d.sourceError && d.sourceError.message ? d.sourceError.message : 'Verifique se os arquivos .glb foram publicados junto com a página.'));
+    });
     var arBtn = document.createElement('button');
-    arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.innerHTML = '🏛️ Ver em RA';
+    arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent = '🏛️ Ver em RA';
     arBtn.addEventListener('click', function(){ track('ar'); });
-    mv.appendChild(arBtn); stage.appendChild(mv);
+    mv.appendChild(arBtn);
+    stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st); stage.appendChild(eb);
 
     var c = $('collect');
     if(visited[m.id]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
