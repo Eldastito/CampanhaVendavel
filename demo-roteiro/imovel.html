@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Casa Alta Vista — veja antes de existir</title>
+<script type="module" src="model-viewer.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#F5F6F2; --ink:#14201B; --muted:#5C6A63;
+    --brand:#1D5B6B; --brand-soft:#DDECEF; --signal:#B0742A; --signal-soft:#F3E6D5;
+    --line:#D3D8D0; --line-strong:#BFC6BD; --ok:#1D6B52; --err:#B3362B;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;
+      --brand:#5FB6CC;--brand-soft:#14232733;--signal:#D6AE56;--signal-soft:#2A2110;
+      --line:#26302A;--line-strong:#374238;--ok:#54B892;--err:#E07B6F;}
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .app{max-width:500px;margin:0 auto;min-height:100dvh;padding:calc(16px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+
+  .sponsor{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  .sponsor .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
+  .sponsor b{color:var(--brand)}
+  h1{font-family:var(--serif);font-size:1.9rem;line-height:1.05;margin:0 0 2px}
+  .loc{color:var(--muted);font-size:.92rem;margin:0 0 14px}
+
+  .stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);height:min(46vh,360px);margin-bottom:12px}
+  model-viewer{width:100%;height:100%;background:radial-gradient(120% 120% at 50% 25%, var(--card), var(--paper))}
+  .ar-btn{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;box-shadow:0 8px 26px rgba(29,91,107,.4);cursor:pointer}
+  .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
+  .status{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.9rem;z-index:4;pointer-events:none}
+  .status.hide{display:none}
+  .arnote{background:var(--signal-soft);border:1px solid var(--signal);border-radius:12px;padding:11px 14px;margin:0 0 14px;font-size:.85rem}
+  .arnote b{color:var(--signal)}
+
+  .price{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:6px 0 14px;flex-wrap:wrap}
+  .price .v{font-family:var(--serif);font-size:1.6rem;color:var(--ink)}
+  .price .from{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .specs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none}
+  .specs li{font-family:var(--mono);font-size:.78rem;background:var(--brand-soft);color:var(--ink);border-radius:8px;padding:7px 11px}
+
+  .lead{font-size:1.02rem;margin:0 0 8px}
+  .narrate-btn{margin:0 0 20px;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;display:inline-flex;gap:8px;align-items:center;background:var(--brand-soft);color:var(--brand);border:1px solid var(--brand);border-radius:999px;padding:9px 16px}
+  .narrate-btn.playing{background:var(--brand);color:#fff}
+
+  .form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .form h2{font-size:1.1rem;margin:0 0 3px}
+  .form .cap{color:var(--muted);font-size:.86rem;margin:0 0 16px}
+  .form label{display:block;font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .form input,.form select{width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);margin-bottom:14px}
+  .consent{display:flex;gap:10px;align-items:flex-start;font-size:.82rem;color:var(--muted);margin-bottom:16px}
+  .consent input{width:auto;margin:3px 0 0}
+  .btn{width:100%;font:inherit;font-weight:800;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--brand);background:var(--brand);color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  .msg{margin:12px 0 0;font-size:.88rem;min-height:1.1em}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+  .done{text-align:center;padding:16px 4px}
+  .done .big{font-size:2.4rem}
+  .foot{margin-top:18px;font-family:var(--mono);font-size:.64rem;color:var(--muted);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="app">
+  <p class="sponsor"><span class="dot"></span> Um lançamento <b id="sp-name">Construtora Alta Vista</b></p>
+  <h1 id="title">Casa Alta Vista</h1>
+  <p class="loc" id="subtitle">Lançamento · 3 suítes</p>
+
+  <div class="stage" id="stage"></div>
+  <p class="arnote" id="arnote" style="display:none"></p>
+
+  <div class="price">
+    <span class="v" id="preco">R$ 1.290.000</span>
+    <span class="from">a partir de</span>
+  </div>
+  <ul class="specs" id="specs"></ul>
+
+  <p class="lead" id="body">Conheça sua futura casa antes de a obra ficar pronta.</p>
+  <button class="narrate-btn" id="narrate" type="button">🔊 Ouvir a apresentação</button>
+
+  <div class="form" id="formWrap">
+    <h2>Quero saber mais</h2>
+    <p class="cap">Deixe seu contato e um corretor fala com você.</p>
+    <form id="leadForm">
+      <label for="nome">Nome</label>
+      <input id="nome" type="text" autocomplete="name" required>
+      <label for="tel">WhatsApp / telefone</label>
+      <input id="tel" type="tel" inputmode="tel" autocomplete="tel" required>
+      <label for="interesse">Interesse</label>
+      <select id="interesse">
+        <option>Agendar visita</option>
+        <option>Receber tabela de preços</option>
+        <option>Falar com um corretor</option>
+      </select>
+      <div class="consent">
+        <input id="consent" type="checkbox">
+        <label for="consent" style="font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:.82rem;color:var(--muted);margin:0">Autorizo o contato da construtora sobre este lançamento.</label>
+      </div>
+      <button class="btn" type="submit">Enviar</button>
+      <p class="msg" id="msg"></p>
+    </form>
+  </div>
+
+  <p class="foot">CampanhaVendavel · vertical imobiliária — mesma tecnologia, outro conteúdo.</p>
+</div>
+
+<script type="module">
+  const SB_URL='https://uhyzpmzxkgprjevnojpf.supabase.co';
+  const SB_KEY='sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
+  const ENV_SLUG='lancamento';
+
+  const FALLBACK = {
+    sponsor:'Construtora Alta Vista', title:'Casa Alta Vista', subtitle:'Lançamento · 3 suítes',
+    preco:'R$ 1.290.000', specs:['3 suítes','240 m²','2 vagas','piscina'],
+    body:'Conheça sua futura casa antes de a obra ficar pronta. Aponte o celular e veja o projeto em tamanho real.',
+    glb:'casa.glb', usdz:'casa.usdz'
+  };
+
+  let sb=null, online=false, envId=null, nodeId=null, sponsorId=null, sessionId=null, data=FALLBACK;
+  const $=id=>document.getElementById(id);
+  const synth=window.speechSynthesis||null;
+
+  async function logEvent(kind){
+    if(online && sb && sessionId){
+      try{ await sb.from('interaction_events').insert({session_id:sessionId, environment_id:envId, node_id:nodeId, kind}); }catch(e){}
+    }
+  }
+
+  function render(){
+    $('sp-name').textContent=data.sponsor;
+    $('title').textContent=data.title;
+    $('subtitle').textContent=data.subtitle;
+    $('preco').textContent=data.preco;
+    $('body').textContent=data.body;
+    $('specs').innerHTML=(data.specs||[]).map(s=>'<li>'+s+'</li>').join('');
+    const stage=$('stage'); stage.innerHTML='';
+    const bar=document.createElement('div'); bar.className='loadbar';
+    const st=document.createElement('div'); st.className='status'; st.textContent='Carregando a casa em 3D…';
+    const mv=document.createElement('model-viewer');
+    mv.setAttribute('src',data.glb); mv.setAttribute('ios-src',data.usdz); mv.setAttribute('alt',data.title);
+    mv.setAttribute('ar',''); mv.setAttribute('ar-modes','webxr scene-viewer quick-look'); mv.setAttribute('ar-scale','auto');
+    mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate',''); mv.setAttribute('touch-action','pan-y');
+    mv.setAttribute('shadow-intensity','1'); mv.setAttribute('camera-orbit','30deg 68deg 110%'); mv.setAttribute('exposure','1.1');
+    mv.addEventListener('progress',ev=>{const p=(ev.detail&&ev.detail.totalProgress)||0;bar.style.width=Math.round(p*100)+'%';if(p>=1)setTimeout(()=>bar.style.display='none',400);});
+    mv.addEventListener('load',()=>{st.classList.add('hide');updateArNote(mv);});
+    mv.addEventListener('ar-status',()=>updateArNote(mv));
+    setTimeout(()=>updateArNote(mv),1600);
+    const arBtn=document.createElement('button'); arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent='🏠 Ver no meu terreno (RA)';
+    arBtn.addEventListener('click',()=>logEvent('ar_open'));
+    mv.appendChild(arBtn); stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st);
+  }
+
+  function updateArNote(mv){
+    const el=$('arnote'); if(!el||!mv) return;
+    const ua=navigator.userAgent||''; const mobile=/Android|iPhone|iPad|iPod/i.test(ua);
+    const inApp=/(FBAN|FBAV|Instagram|Line\/|WhatsApp|WeChat|MicroMessenger)/i.test(ua);
+    if(mv.canActivateAR){ el.style.display='none'; return; }
+    el.innerHTML = !mobile ? '📱 A <b>Realidade Aumentada</b> funciona no celular. Abra este link no seu telefone.'
+      : inApp ? '↗ Abra no <b>navegador do celular</b> (Safari/Chrome), não dentro do app, para ver em RA.'
+      : 'Seu navegador não liberou a RA. No iPhone use o Safari; no Android, confira o “Google Play Services para RA”.';
+    el.style.display='block';
+  }
+
+  // Narração
+  let speaking=false;
+  function stripHtml(s){const d=document.createElement('div');d.innerHTML=s||'';return (d.textContent||'').trim();}
+  function stopSpeak(){try{synth&&synth.cancel();}catch(e){}speaking=false;const b=$('narrate');b.classList.remove('playing');b.textContent='🔊 Ouvir a apresentação';}
+  $('narrate').onclick=function(){
+    if(!synth){this.textContent='🔊 Narração indisponível';this.disabled=true;return;}
+    if(speaking){stopSpeak();return;}
+    const u=new SpeechSynthesisUtterance(data.title+'. '+stripHtml(data.body)); u.lang='pt-BR'; u.rate=0.98;
+    const v=(synth.getVoices()||[]).find(v=>/pt[-_]?BR/i.test(v.lang))||(synth.getVoices()||[]).find(v=>/^pt/i.test(v.lang)); if(v)u.voice=v;
+    u.onend=stopSpeak; u.onerror=stopSpeak; synth.cancel(); synth.speak(u);
+    speaking=true; this.classList.add('playing'); this.textContent='⏸ Parar narração';
+  };
+
+  // Envio do lead
+  $('leadForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const msg=$('msg'); msg.className='msg'; msg.textContent='';
+    if(!$('consent').checked){ msg.classList.add('err'); msg.textContent='Marque a autorização de contato para enviar.'; return; }
+    const name=$('nome').value.trim(), phone=$('tel').value.trim(), interest=$('interesse').value;
+    if(!name || !phone){ msg.classList.add('err'); msg.textContent='Preencha nome e telefone.'; return; }
+    const btn=$('leadForm').querySelector('button'); btn.disabled=true; btn.textContent='Enviando…';
+    if(online && sb){
+      try{
+        const { error } = await sb.from('leads').insert({ environment_id:envId, sponsor_id:sponsorId, name, phone, interest, consent:true });
+        if(error) throw error;
+        await logEvent('lead');
+      }catch(err){
+        btn.disabled=false; btn.textContent='Enviar';
+        msg.classList.add('err'); msg.textContent='Não foi possível enviar: '+(err.message||err); return;
+      }
+    }
+    $('formWrap').innerHTML='<div class="done"><div class="big">✅</div><h2>Recebemos seu contato!</h2><p class="cap">A '+data.sponsor+' vai falar com você em breve.</p></div>';
+  });
+
+  // Boot
+  async function boot(){
+    render();
+    try{
+      if(!window.supabase||!window.supabase.createClient) throw new Error('sem supabase');
+      sb=window.supabase.createClient(SB_URL,SB_KEY);
+      const to=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
+      const { data:env, error } = await to(sb.from('environments')
+        .select('id, campaigns(sponsor_id), physical_nodes(id, experiences(title,body,model_glb_url,model_usdz_url,data))')
+        .eq('slug',ENV_SLUG).single(), 8000);
+      if(error||!env) throw error||new Error('sem lançamento');
+      envId=env.id;
+      sponsorId=(env.campaigns&&env.campaigns[0]&&env.campaigns[0].sponsor_id)||null;
+      const node=env.physical_nodes&&env.physical_nodes[0];
+      if(node){
+        nodeId=node.id;
+        const x=(node.experiences&&node.experiences[0])||{}; const d=x.data||{};
+        data={ sponsor:d.sponsor||FALLBACK.sponsor, title:x.title||FALLBACK.title, subtitle:node.subtitle||FALLBACK.subtitle,
+          preco:d.preco||FALLBACK.preco, specs:d.specs||FALLBACK.specs, body:x.body||FALLBACK.body,
+          glb:x.model_glb_url||FALLBACK.glb, usdz:x.model_usdz_url||FALLBACK.usdz };
+        render();
+      }
+      const anonId='anon-'+Math.random().toString(36).slice(2)+'-'+Date.now();
+      const { data:s } = await sb.from('participant_sessions').insert({ environment_id:envId, anon_id:anonId, consent_analytics:true }).select('id').single();
+      sessionId=s?s.id:null; online=true;
+      logEvent('view');
+    }catch(err){ console.warn('[imovel] offline:', err&&err.message); online=false; }
+  }
+  boot();
+</script>
+</body>
+</html>
