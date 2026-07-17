@@ -223,9 +223,10 @@
   // ===================== Estado =====================
   let sb = null, envId = null, sessionId = null, online = false;
   let ROTEIRO = FALLBACK;
-  let visited = {}, current = null;
+  let visited = {}, current = null, curNodeId = null;
   let localEvents = { scan:0, ar:0, seal:0, reward:0 };
 
+  const keyOf = m => m.code || m.id;       // identidade estável (mesma online/offline)
   const $ = id => document.getElementById(id);
   const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
 
@@ -274,6 +275,7 @@
   async function boot(){
     // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
     ROTEIRO = FALLBACK; renderHome(); renderPanel();
+    handleDeepLink();                        // veio de um QR? abre o ponto já
     // 2) Em segundo plano, tenta subir para dados "ao vivo" (com timeout).
     try{
       if(!window.supabase || !window.supabase.createClient) throw new Error('supabase.js não carregou');
@@ -283,13 +285,14 @@
       if(e1 || !env) throw e1 || new Error('roteiro não encontrado');
       envId = env.id;
       const { data: nodes, error: e2 } = await withTimeout(sb.from('physical_nodes')
-        .select('id,label,subtitle,order_index,experiences(title,body,model_glb_url,model_usdz_url,data)')
+        .select('id,label,subtitle,anchor_value,order_index,experiences(title,body,model_glb_url,model_usdz_url,data)')
         .eq('environment_id', envId).order('order_index'), 8000);
       if(e2 || !nodes || !nodes.length) throw e2 || new Error('sem pontos');
       ROTEIRO = nodes.map(n => {
         const x = (n.experiences && n.experiences[0]) || {};
         const d = x.data || {};
-        return { id:n.id, nome:n.label, sub:n.subtitle||'',
+        return { id:n.id, code:(n.anchor_value ? String(n.anchor_value).split(':').pop() : n.id),
+          nome:n.label, sub:n.subtitle||'',
           glb:x.model_glb_url, usdz:x.model_usdz_url,
           flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'' };
       });
@@ -305,6 +308,25 @@
       console.warn('[CampanhaVendavel] modo offline:', err && err.message);
       online = false;                        // fallback já está na tela
     }
+    handleDeepLink();                        // se veio de um QR, abre o ponto
+  }
+
+  // QR físico: link como  ...?node=teatro  abre direto aquele ponto.
+  function resolveByCode(code){ return ROTEIRO.find(x => (x.code||x.id)===code); }
+  function handleDeepLink(){
+    let code = null;
+    try{ code = new URLSearchParams(location.search).get('node'); }catch(e){}
+    if(!code) return;
+    code = code.trim();
+    // já aberto neste ponto? (2ª chamada após subir "ao vivo") — não reabre
+    if($('detail').classList.contains('active') && current === code){
+      if(online && !curNodeId){                     // atualiza id p/ telemetria online
+        const mm = resolveByCode(code); if(mm) { curNodeId = mm.id; logEvent('scan', curNodeId); }
+      }
+      return;
+    }
+    const m = resolveByCode(code);
+    if(m) openDetail(keyOf(m));
   }
 
   async function logEvent(kind, nodeId){
@@ -320,12 +342,12 @@
     const ul = $('points'); ul.innerHTML = '';
     const seals = $('seals'); seals.innerHTML = '';
     ROTEIRO.forEach((m,i)=>{
-      const done = !!visited[m.id];
+      const done = !!visited[keyOf(m)];
       const b = document.createElement('button');
       b.className = 'point' + (done?' done':'');
       b.innerHTML = '<span class="num">'+(done?'✓':(i+1))+'</span>'+
         '<span class="info"><b>'+m.nome+'</b><span>'+m.sub+'</span></span><span class="chev">›</span>';
-      b.onclick = ()=>openDetail(m.id);
+      b.onclick = ()=>openDetail(keyOf(m));
       ul.appendChild(b);
       const sd = document.createElement('div');
       sd.className = 'seal' + (done?' on':''); sd.textContent = done?'✓':(i+1);
@@ -334,9 +356,9 @@
     $('seal-count').textContent = Object.keys(visited).length + ' de ' + ROTEIRO.length + ' selos';
   }
 
-  function openDetail(id){
-    const m = ROTEIRO.find(x=>x.id===id); if(!m) return;
-    current = id; stopSpeak(); logEvent('scan', id);
+  function openDetail(key){
+    const m = ROTEIRO.find(x=>keyOf(x)===key) || ROTEIRO.find(x=>x.id===key); if(!m) return;
+    current = keyOf(m); curNodeId = online ? m.id : null; stopSpeak(); logEvent('scan', curNodeId);
     $('d-eyebrow').textContent = 'Ponto ' + (ROTEIRO.indexOf(m)+1) + ' de ' + ROTEIRO.length;
     $('d-title').textContent = m.nome; $('d-sub').textContent = m.sub;
     $('d-flabel').textContent = m.flabel; $('d-fund').innerHTML = m.fund;
@@ -360,11 +382,11 @@
     setTimeout(()=>updateArNote(mv), 1600); // fallback caso 'load' já tenha disparado
     mv.addEventListener('error', ev=>{ st.classList.add('hide'); const d=ev.detail||{}; eb.textContent='⚠ Falha ao carregar '+m.glb+'. '+((d.sourceError&&d.sourceError.message)||'Verifique se os .glb foram publicados junto com a página.'); eb.classList.add('show'); });
     const arBtn = document.createElement('button'); arBtn.className='ar-btn'; arBtn.setAttribute('slot','ar-button'); arBtn.textContent='🏛️ Ver em RA';
-    arBtn.addEventListener('click', ()=>logEvent('ar_open', id));
+    arBtn.addEventListener('click', ()=>logEvent('ar_open', curNodeId));
     mv.appendChild(arBtn); stage.appendChild(mv); stage.appendChild(bar); stage.appendChild(st); stage.appendChild(eb);
 
     const c = $('collect');
-    if(visited[m.id]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
+    if(visited[keyOf(m)]){ c.disabled=true; c.textContent='Selo já coletado ✓'; }
     else { c.disabled=false; c.textContent='Coletar selo deste ponto'; }
     show('detail');
   }
@@ -385,8 +407,8 @@
   // ===================== Ações =====================
   $('collect').onclick = async ()=>{
     if(!current || visited[current]) return;
-    visited[current] = true; await logEvent('complete', current); renderHome();
-    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', current); renderPanel(); show('reward'); }
+    visited[current] = true; await logEvent('complete', curNodeId); renderHome();
+    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', curNodeId); renderPanel(); show('reward'); }
     else { renderPanel(); show('home'); }
   };
   $('narrate').onclick = speakCurrent;

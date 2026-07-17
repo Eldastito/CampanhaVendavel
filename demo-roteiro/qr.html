@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Codes do Roteiro — CampanhaVendavel</title>
+<script src="qrcode.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#FFFFFF; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --signal:#B08628; --line:#D3D8D0;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  .wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-family:var(--serif);font-size:1.7rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:.95rem;max-width:60ch}
+
+  .controls{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:26px}
+  .controls label{display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .controls input{width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)}
+  .controls .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .controls .row>div{flex:1;min-width:220px}
+  button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:11px 18px;border:1px solid var(--route);background:var(--route);color:#fff}
+  button.sec{background:transparent;color:var(--route)}
+  .hint{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
+  .qcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;break-inside:avoid}
+  .qcard .eyebrow{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal);margin:0 0 4px;font-weight:700}
+  .qcard h2{font-family:var(--serif);font-size:1.15rem;margin:0 0 2px}
+  .qcard .place{font-size:.78rem;color:var(--muted);margin:0 0 14px}
+  .qcard .qbox{width:180px;height:180px;display:grid;place-items:center;background:#fff;border-radius:10px;padding:8px}
+  .qcard .qbox svg{width:100%;height:100%}
+  .qcard .call{margin:14px 0 0;font-weight:700;font-size:.9rem}
+  .qcard .call span{color:var(--route)}
+  .qcard .code{font-family:var(--mono);font-size:.66rem;color:var(--muted);margin:6px 0 0}
+
+  .brand{margin-top:30px;font-family:var(--mono);font-size:.7rem;color:var(--muted);text-align:center}
+
+  @media print{
+    body{background:#fff}
+    .controls,.brand,.noprint{display:none !important}
+    .wrap{max-width:none;padding:0}
+    .grid{grid-template-columns:repeat(2,1fr);gap:0}
+    .qcard{border:1px dashed #bbb;border-radius:0;margin:0;padding:28px 20px;page-break-inside:avoid}
+    h1{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>QR Codes do Roteiro</h1>
+  <p class="sub">Gere os QR Codes para <b>imprimir e colar em cada ponto</b>. O visitante aponta a câmera do celular e cai direto naquele monumento — com o 3D em RA e a narração. Não precisa instalar app.</p>
+
+  <div class="controls noprint">
+    <div class="row">
+      <div>
+        <label for="base">Endereço do site publicado (Netlify)</label>
+        <input id="base" type="url" placeholder="https://seu-site.netlify.app" />
+      </div>
+      <button id="gen">Gerar QR Codes</button>
+      <button id="print" class="sec">Imprimir</button>
+    </div>
+    <p class="hint">Cole aqui o link que o Netlify te deu (ex.: <code>https://roteiro-rio.netlify.app</code>). O endereço fica salvo neste navegador. Depois clique em <b>Imprimir</b> → Salvar como PDF, e leve para a gráfica.</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="brand">CampanhaVendavel · Roteiro Cultural</p>
+</div>
+
+<script>
+  // Pontos do roteiro (code = mesmo valor usado no app, em ?node=CODE)
+  var PONTOS = [
+    { code:'teatro', nome:'Theatro Municipal', place:'Rio de Janeiro · Cinelândia' },
+    { code:'pegaso', nome:'Pégaso',            place:'O cavalo alado das artes' },
+    { code:'pietat', nome:'Pietat',            place:'Museu Frederic Marès' }
+  ];
+
+  function qrSvg(text){
+    var qr = qrcode(0, 'M');        // tipo auto, correção M
+    qr.addData(text); qr.make();
+    return qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+  }
+
+  function normalizeBase(v){
+    v = (v||'').trim();
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    return v.replace(/\/+$/,'');           // sem barra no fim
+  }
+
+  function render(){
+    var base = normalizeBase(document.getElementById('base').value);
+    var grid = document.getElementById('grid'); grid.innerHTML = '';
+    PONTOS.forEach(function(p){
+      var url = base ? (base + '/?node=' + encodeURIComponent(p.code)) : ('?node=' + p.code);
+      var card = document.createElement('div'); card.className = 'qcard';
+      card.innerHTML =
+        '<p class="eyebrow">Aponte a câmera</p>' +
+        '<h2>' + p.nome + '</h2>' +
+        '<p class="place">' + p.place + '</p>' +
+        '<div class="qbox">' + qrSvg(url) + '</div>' +
+        '<p class="call">Veja em <span>Realidade Aumentada</span></p>' +
+        '<p class="code">' + (base ? url.replace(/^https?:\/\//,'') : '⚠ informe o endereço do site') + '</p>';
+      grid.appendChild(card);
+    });
+  }
+
+  var saved = null;
+  try{ saved = localStorage.getItem('cv_base'); }catch(e){}
+  if(saved) document.getElementById('base').value = saved;
+
+  document.getElementById('gen').onclick = function(){
+    try{ localStorage.setItem('cv_base', document.getElementById('base').value.trim()); }catch(e){}
+    render();
+  };
+  document.getElementById('print').onclick = function(){ window.print(); };
+  render();
+</script>
+</body>
+</html>
