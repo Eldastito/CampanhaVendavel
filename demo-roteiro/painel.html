@@ -106,6 +106,7 @@
       <p class="roteiro">Circulação e engajamento em tempo real</p>
     </div>
     <div class="tools">
+      <select id="envsel" style="font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)"></select>
       <span class="updated" id="updated"></span>
       <button class="sec" id="refresh" type="button">↻ Atualizar</button>
       <button class="sec hidden" id="logout" type="button">Sair</button>
@@ -118,6 +119,7 @@
     <div class="kpi"><p class="lab">RA aberta</p><div class="val" id="k-ar">—</div></div>
     <div class="kpi"><p class="lab">Selos coletados</p><div class="val" id="k-complete">—</div></div>
     <div class="kpi"><p class="lab">Brindes resgatados</p><div class="val" id="k-redeem">—</div></div>
+    <div class="kpi accent"><p class="lab">Leads</p><div class="val" id="k-leads">—</div></div>
     <div class="kpi"><p class="lab">Visitantes únicos</p><div class="val" id="k-sessions">—</div></div>
   </div>
 
@@ -139,7 +141,13 @@
     <div id="daily"></div>
   </div>
 
-  <p class="foot">CampanhaVendavel · painel agregado (sem dados pessoais)</p>
+  <div class="card" id="leadsCard" style="display:none">
+    <h2>Leads capturados</h2>
+    <p class="cap">Contatos que pediram informação neste lançamento — visíveis só para você.</p>
+    <div id="leads"></div>
+  </div>
+
+  <p class="foot">CampanhaVendavel · painel restrito ao organizador (leads visíveis só após login)</p>
 </div>
 
 <script>
@@ -193,7 +201,33 @@
     }).join('')+'</div>';
   }
 
-  function allZero(sum){ return !sum || (sum.scans+sum.ar_opens+sum.completes+sum.redeems)===0; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+  function renderLeads(rows){
+    var card=$('leadsCard');
+    if(!rows||!rows.length){ card.style.display='none'; return; }
+    card.style.display='';
+    var html='<table><thead><tr><th>Nome</th><th>Contato</th><th>Interesse</th><th style="text-align:right">Quando</th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var d=r.created_at? new Date(r.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      html+='<tr><td>'+esc(r.name)+'</td><td class="mono-mini">'+esc(r.phone)+'</td><td>'+esc(r.interest)+'</td><td class="n">'+d+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    $('leads').innerHTML=html;
+  }
+
+  function updateEnvName(){ var s=$('envsel'); var o=s.options[s.selectedIndex]; if(o) $('env-name').textContent=o.textContent; }
+  async function populateEnvs(){
+    try{
+      var r=await sb.from('environments').select('slug,name').order('created_at');
+      var envs=(r.data||[]); var sel=$('envsel'); sel.innerHTML='';
+      envs.forEach(function(e){ var o=document.createElement('option'); o.value=e.slug; o.textContent=e.name; sel.appendChild(o); });
+      if(envs.length){ if(!envs.some(function(e){return e.slug===ENV_SLUG;})) ENV_SLUG=envs[0].slug; sel.value=ENV_SLUG; updateEnvName(); }
+      sel.onchange=function(){ ENV_SLUG=sel.value; updateEnvName(); load(); };
+    }catch(e){}
+  }
+
+  function allZero(sum){ return !sum || (sum.scans+sum.ar_opens+sum.completes+sum.redeems+sum.leads)===0; }
 
   async function load(){
     if(!sb){ setStatus('Biblioteca do banco não carregou (supabase.js).','err'); return; }
@@ -201,10 +235,10 @@
     try{
       var a=await sb.rpc('roteiro_summary',{env_slug:ENV_SLUG});
       if(a.error) throw a.error;
-      var sum=(a.data&&a.data[0])||{scans:0,ar_opens:0,completes:0,redeems:0,sessions:0};
+      var sum=(a.data&&a.data[0])||{scans:0,ar_opens:0,completes:0,redeems:0,leads:0,sessions:0};
       $('k-scan').textContent=sum.scans; $('k-ar').textContent=sum.ar_opens;
       $('k-complete').textContent=sum.completes; $('k-redeem').textContent=sum.redeems;
-      $('k-sessions').textContent=sum.sessions;
+      $('k-leads').textContent=sum.leads; $('k-sessions').textContent=sum.sessions;
       renderFunnel(sum);
 
       var b=await sb.rpc('roteiro_node_stats',{env_slug:ENV_SLUG});
@@ -214,6 +248,9 @@
       var c=await sb.rpc('roteiro_daily',{env_slug:ENV_SLUG});
       if(c.error) throw c.error;
       renderDaily(c.data||[]);
+
+      var l=await sb.rpc('leads_list',{env_slug:ENV_SLUG});
+      renderLeads(l&&!l.error ? (l.data||[]) : []);
 
       var now=new Date();
       $('updated').textContent='atualizado '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -231,7 +268,7 @@
     if(!sb){ setStatus('Biblioteca do banco não carregou (supabase.js).','err'); return; }
     try{
       const { data } = await sb.auth.getSession();
-      if(data && data.session){ showApp(); load(); }
+      if(data && data.session){ showApp(); await populateEnvs(); load(); }
       else showLogin();
     }catch(e){ showLogin(); }
   }
@@ -246,7 +283,7 @@
     const email=$('email').value.trim(), password=$('password').value;
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if(error){ $('loginErr').textContent = 'Não foi possível entrar: ' + error.message; return; }
-    showApp(); load();
+    showApp(); await populateEnvs(); load();
   });
   $('logout').onclick = async function(){ try{ await sb.auth.signOut(); }catch(e){} showLogin(); };
 

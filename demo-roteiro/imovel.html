@@ -225,7 +225,7 @@
       const anonId='anon-'+Math.random().toString(36).slice(2)+'-'+Date.now();
       const { data:s } = await sb.from('participant_sessions').insert({ environment_id:envId, anon_id:anonId, consent_analytics:true }).select('id').single();
       sessionId=s?s.id:null; online=true;
-      logEvent('view');
+      logEvent('scan');
     }catch(err){ console.warn('[imovel] offline:', err&&err.message); online=false; }
   }
   boot();
