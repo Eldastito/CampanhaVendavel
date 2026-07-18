@@ -113,6 +113,7 @@
       <h3 id="pf-title">Novo ponto</h3>
       <div class="grid">
         <div class="fld full"><label>Nome do ponto / obra</label><input id="pf-label" placeholder="Ex.: Theatro Municipal"></div>
+        <div class="fld full"><button class="sec" id="pf-ai" type="button" style="width:auto">✨ Gerar história e curiosidades com IA</button> <span id="pf-ai-msg" class="hint"></span></div>
         <div class="fld"><label>Subtítulo</label><input id="pf-sub" placeholder="Ex.: Cinelândia · desde 1909"></div>
         <div class="fld"><label>Código do QR</label><input id="pf-code" placeholder="ex.: teatro"><p class="hint">vira o QR: ...?node=<b>código</b></p></div>
         <div class="fld"><label>Ordem</label><input id="pf-order" type="number" value="1"></div>
@@ -313,6 +314,24 @@
   $('btnNewEnv').onclick=function(){ show($('envForm'),true); };
   $('env-save').onclick=saveEnv; $('env-cancel').onclick=function(){ show($('envForm'),false); };
   $('btnAddPoint').onclick=function(){ openPoint(null); };
+  $('pf-ai').onclick=async function(){
+    var name=$('pf-label').value.trim();
+    if(name.length<2){ $('pf-ai-msg').textContent='Digite o nome do ponto primeiro.'; return; }
+    var btn=this, old=btn.textContent; btn.disabled=true; btn.textContent='Gerando…'; $('pf-ai-msg').textContent='';
+    try{
+      var r=await sb.functions.invoke('generate-content',{ body:{ name:name } });
+      if(r.error) throw new Error('IA indisponível — verifique se as chaves foram configuradas no Supabase.');
+      var d=r.data||{};
+      if(d.error) throw new Error(d.error);
+      if(d.body) $('pf-body').value=d.body;
+      if(d.chips&&d.chips.length) $('pf-chips').value=d.chips.join(', ');
+      var c=d.curios||[];
+      if(c[0]){ $('pf-c1h').value=c[0].h||''; $('pf-c1p').value=c[0].p||''; }
+      if(c[1]){ $('pf-c2h').value=c[1].h||''; $('pf-c2p').value=c[1].p||''; }
+      $('pf-ai-msg').textContent='Rascunho gerado ('+(d._provider==='gemini'?'Gemini':'GPT')+') — revise antes de salvar.';
+    }catch(err){ $('pf-ai-msg').textContent=(err.message||err); }
+    btn.disabled=false; btn.textContent=old;
+  };
   $('pf-save').onclick=savePoint; $('pf-cancel').onclick=function(){ show($('pointForm'),false); };
   $('btnAddSponsor').onclick=function(){ openSponsor(null); };
   $('sf-save').onclick=saveSponsor; $('sf-cancel').onclick=function(){ show($('sponsorForm'),false); };
