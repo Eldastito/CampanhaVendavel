@@ -80,6 +80,14 @@
   .arnote{background:var(--signal-soft);border:1px solid var(--signal);color:var(--ink);
     border-radius:12px;padding:11px 14px;margin:0 0 20px;font-size:.86rem;line-height:1.5}
   .arnote b{color:var(--signal)}
+  .sponsor{border:1px solid var(--signal);background:var(--signal-soft);border-radius:14px;padding:14px 16px;margin:0 0 20px}
+  .sponsor .k{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal);font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+  .sponsor .brand{display:flex;align-items:center;gap:10px;margin:0 0 6px}
+  .sponsor .brand img{height:26px;width:auto;border-radius:5px}
+  .sponsor .brand b{font-size:1rem}
+  .sponsor p{margin:0 0 12px;font-size:.92rem}
+  .sponsor .sp-btn{font:inherit;font-weight:700;font-size:.9rem;cursor:pointer;border:1px solid var(--signal);background:var(--signal);color:#14201B;border-radius:999px;padding:10px 16px}
+  .sponsor .sp-btn.done{background:transparent;color:var(--signal)}
 
   .loadbar{position:absolute;left:0;top:0;height:3px;width:0%;background:var(--signal);z-index:6;transition:width .2s}
   .status{position:absolute;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none;
@@ -158,6 +166,7 @@
     <div class="stage" id="stage"></div>
     <p class="hintbar">Gire com o dedo · toque em <b>Ver em RA</b> para trazer ao seu ambiente</p>
     <p class="arnote" id="arnote" style="display:none"></p>
+    <div class="sponsor" id="d-sponsor" style="display:none"></div>
     <div class="block">
       <p class="tag" id="d-flabel">Fundação</p>
       <p class="lead" id="d-fund">—</p>
@@ -285,16 +294,18 @@
       if(e1 || !env) throw e1 || new Error('roteiro não encontrado');
       envId = env.id;
       const { data: nodes, error: e2 } = await withTimeout(sb.from('physical_nodes')
-        .select('id,label,subtitle,anchor_value,order_index,experiences(title,body,model_glb_url,model_usdz_url,data)')
+        .select('id,label,subtitle,anchor_value,order_index,experiences(title,body,model_glb_url,model_usdz_url,data),sponsors(name,logo_url,message,cta_label)')
         .eq('environment_id', envId).order('order_index'), 8000);
       if(e2 || !nodes || !nodes.length) throw e2 || new Error('sem pontos');
       ROTEIRO = nodes.map(n => {
         const x = (n.experiences && n.experiences[0]) || {};
         const d = x.data || {};
+        const sp = Array.isArray(n.sponsors) ? n.sponsors[0] : n.sponsors;
         return { id:n.id, code:(n.anchor_value ? String(n.anchor_value).split(':').pop() : n.id),
           nome:n.label, sub:n.subtitle||'',
           glb:x.model_glb_url, usdz:x.model_usdz_url,
-          flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'' };
+          flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'',
+          sponsor: sp && sp.name ? { name:sp.name, logo:sp.logo_url||'', message:sp.message||'', cta:sp.cta_label||'Quero esta oferta' } : null };
       });
       const anonId = 'anon-' + Math.random().toString(36).slice(2) + '-' + Date.now();
       const { data: s } = await sb.from('participant_sessions')
@@ -356,6 +367,22 @@
     $('seal-count').textContent = Object.keys(visited).length + ' de ' + ROTEIRO.length + ' selos';
   }
 
+  function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function renderSponsor(sp){
+    const el = $('d-sponsor');
+    if(!sp){ el.style.display='none'; el.innerHTML=''; return; }
+    el.style.display='';
+    el.innerHTML = '<p class="k">★ Patrocínio</p>' +
+      '<div class="brand">' + (sp.logo ? '<img src="'+escH(sp.logo)+'" alt="">' : '') + '<b>'+escH(sp.name)+'</b></div>' +
+      '<p>'+escH(sp.message)+'</p>' +
+      '<button class="sp-btn" type="button">'+escH(sp.cta)+'</button>';
+    const btn = el.querySelector('.sp-btn');
+    btn.addEventListener('click', function(){
+      logEvent('sponsor', curNodeId);
+      btn.classList.add('done'); btn.textContent='✓ Oferta ativada — mostre na loja'; btn.disabled=true;
+    });
+  }
+
   function openDetail(key){
     const m = ROTEIRO.find(x=>keyOf(x)===key) || ROTEIRO.find(x=>x.id===key); if(!m) return;
     current = keyOf(m); curNodeId = online ? m.id : null; stopSpeak(); logEvent('scan', curNodeId);
@@ -366,6 +393,7 @@
     $('d-curios').innerHTML = (m.curios||[]).map((c,i)=>'<div class="curio"><span class="cn">'+(i===0?'I':'II')+'</span><div><h3>'+c.h+'</h3><p>'+c.p+'</p></div></div>').join('');
     const note = $('d-note');
     if(m.note){ note.style.display='block'; note.textContent = m.note; } else note.style.display='none';
+    renderSponsor(m.sponsor);
 
     const stage = $('stage'); stage.innerHTML = '';
     const bar = document.createElement('div'); bar.className='loadbar';

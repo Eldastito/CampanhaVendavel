@@ -142,7 +142,10 @@
   </div>
 
   <div class="card" id="leadsCard" style="display:none">
-    <h2>Leads capturados</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0">Leads capturados</h2>
+      <button class="sec" id="exportCsv" type="button">⤓ Exportar CSV</button>
+    </div>
     <p class="cap">Contatos que pediram informação neste lançamento — visíveis só para você.</p>
     <div id="leads"></div>
   </div>
@@ -203,7 +206,28 @@
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 
+  var lastLeads=[];
+  function toCSV(rows){
+    var head=['Nome','Contato','Interesse','Data'];
+    var q=function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; };
+    var lines=[head.join(',')];
+    rows.forEach(function(r){
+      var d=r.created_at? new Date(r.created_at).toLocaleString('pt-BR') : '';
+      lines.push([q(r.name),q(r.phone),q(r.interest),q(d)].join(','));
+    });
+    return '﻿'+lines.join('\r\n');
+  }
+  function downloadCSV(){
+    if(!lastLeads.length) return;
+    var blob=new Blob([toCSV(lastLeads)],{type:'text/csv;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download='leads-'+ENV_SLUG+'.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
   function renderLeads(rows){
+    lastLeads = rows||[];
     var card=$('leadsCard');
     if(!rows||!rows.length){ card.style.display='none'; return; }
     card.style.display='';
@@ -276,6 +300,7 @@
   try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){}
 
   $('refresh').onclick=load;
+  $('exportCsv').onclick=downloadCSV;
   $('loginForm').addEventListener('submit', async function(e){
     e.preventDefault();
     $('loginErr').textContent='';
