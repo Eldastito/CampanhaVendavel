@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QR Codes do Roteiro — CampanhaVendavel</title>
 <script src="qrcode.js"></script>
+<script src="supabase.js"></script>
 <style>
   :root{
     --paper:#ECEEE9; --card:#FFFFFF; --ink:#14201B; --muted:#5C6A63;
@@ -27,6 +28,8 @@
   button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:11px 18px;border:1px solid var(--route);background:var(--route);color:#fff}
   button.sec{background:transparent;color:var(--route)}
   .hint{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+  .src{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);vertical-align:middle}
+  .src.live{color:var(--route);border-color:var(--route)}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
   .qcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:center;
@@ -64,7 +67,7 @@
         <input id="base" type="url" placeholder="https://seu-site.netlify.app" />
       </div>
       <div style="flex:0 0 auto;min-width:180px">
-        <label for="roteiro">Roteiro</label>
+        <label for="roteiro">Roteiro <span id="src" class="src">lista local</span></label>
         <select id="roteiro" style="width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)"></select>
       </div>
       <button id="gen">Gerar QR Codes</button>
@@ -79,8 +82,13 @@
 </div>
 
 <script>
-  // Roteiros disponíveis. slug = ?r=slug ; cada ponto vira ?r=slug&node=code.
-  // (Mesmos slugs/codes cadastrados no banco — o app resolve o ponto pelo code.)
+  // Backend (mesmo projeto dos outros apps).
+  var SB_URL='https://uhyzpmzxkgprjevnojpf.supabase.co';
+  var SB_KEY='sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
+  var sb=null;
+
+  // Fallback offline: lista local usada instantaneamente e se o banco falhar.
+  // Ao vivo, é substituída pelos roteiros/pontos cadastrados no banco (admin.html).
   var ROTEIROS = {
     'rio-centro': {
       nome:'Roteiro Cultural — Centro do Rio',
@@ -122,9 +130,20 @@
   }
 
   var sel = document.getElementById('roteiro');
-  Object.keys(ROTEIROS).forEach(function(slug){
-    var o = document.createElement('option'); o.value = slug; o.textContent = ROTEIROS[slug].nome; sel.appendChild(o);
-  });
+  function populateSelect(){
+    var prev = sel.value;
+    sel.innerHTML = '';
+    Object.keys(ROTEIROS).forEach(function(slug){
+      var o = document.createElement('option'); o.value = slug; o.textContent = ROTEIROS[slug].nome; sel.appendChild(o);
+    });
+    if(prev && ROTEIROS[prev]) sel.value = prev;
+  }
+  function setSrc(live){
+    var el = document.getElementById('src'); if(!el) return;
+    el.textContent = live ? 'ao vivo' : 'lista local';
+    el.classList.toggle('live', !!live);
+  }
+  populateSelect();
 
   function render(){
     var base = normalizeBase(document.getElementById('base').value);
@@ -171,6 +190,29 @@
   sel.onchange = render;
   document.getElementById('print').onclick = function(){ window.print(); };
   render();
+
+  // Sobe para "ao vivo": lê roteiros e pontos do banco (admin.html cadastra lá).
+  (function loadFromDB(){
+    try{
+      if(!window.supabase || !window.supabase.createClient) return;   // fallback fica
+      sb = window.supabase.createClient(SB_URL, SB_KEY);
+      var to = function(p, ms){ return Promise.race([p, new Promise(function(_,r){ setTimeout(function(){ r(new Error('timeout')); }, ms); })]); };
+      to(sb.from('environments').select('slug,name,physical_nodes(label,subtitle,anchor_value,order_index)').order('created_at'), 8000)
+        .then(function(res){
+          if(res.error || !res.data || !res.data.length) throw (res.error || new Error('vazio'));
+          var built = {};
+          res.data.forEach(function(e){
+            var pts = (e.physical_nodes || []).slice()
+              .sort(function(a,b){ return (a.order_index||0) - (b.order_index||0); })
+              .map(function(n){ return { code:(n.anchor_value ? String(n.anchor_value).split(':').pop() : ''), nome:n.label, place:n.subtitle||'' }; })
+              .filter(function(p){ return p.code; });
+            if(pts.length) built[e.slug] = { nome:e.name, pontos:pts };
+          });
+          if(Object.keys(built).length){ ROTEIROS = built; populateSelect(); setSrc(true); render(); }
+        })
+        .catch(function(){ setSrc(false); /* mantém a lista local */ });
+    }catch(e){ setSrc(false); }
+  })();
 </script>
 </body>
 </html>

@@ -58,8 +58,8 @@ Colunas de brinde por campanha em `environments`: `reward_title`, `reward_code`,
 1. ~~**Banco não versionado**~~ ✅ RESOLVIDO — schema, RLS, RPCs e seed agora estão em `supabase/migrations/` + `supabase/seed.sql` (validados em Postgres local). Ver `supabase/README.md` para reconstruir. _Obs.: reconstruído do código, não é dump byte-a-byte; para cópia exata, exportar via painel do Supabase._
 2. ~~**Consentimento LGPD**~~ ✅ RESOLVIDO (roteiro.html) — banner de consentimento antes de qualquer telemetria; sem "permitir", nenhuma sessão/evento é gravado. Escolha lembrada; link "Privacidade e dados" no rodapé para revogar. _Obs.: `imovel.html` ainda cria sessão de analytics sem esse banner (já tem consentimento próprio do lead) — porta pendente para consistência._
 3. ~~**Sessão/progresso não persistem**~~ ✅ RESOLVIDO (roteiro.html) — `anon_id` persistido (mesmo visitante entre refreshes) e selos salvos por roteiro no `localStorage` (sobrevivem ao recarregar).
-4. **QR/Studio**: `qr.html` usa listas fixas por roteiro (não lê do banco). `admin.html` já faz CRUD, mas sem upload de modelos. _(pendente)_
+4. ~~**QR lê lista fixa**~~ ✅ RESOLVIDO — `qr.html` agora lê roteiros e pontos do banco (qualquer roteiro criado no `admin.html` aparece no gerador), com fallback para a lista local e indicador "ao vivo / lista local". Ainda pendente: **upload de modelos** no `admin.html`.
 
 ## Próximo passo sugerido
 
-Fechar o **teste do cinema** (receita imediata). Pendências restantes: portar consentimento para `imovel.html` (#2b), QR/Studio lendo do banco (#4), e os modelos do personagem do Santos Dumont.
+Fechar o **teste do cinema** (receita imediata). Pendências restantes: modelos do personagem do Santos Dumont (pontos escada/interior do `encantada`), upload de modelos no `admin.html`.
