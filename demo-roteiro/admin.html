@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — CampanhaVendavel</title>
+<script src="supabase.js"></script>
+<style>
+  :root{
+    --paper:#ECEEE9; --card:#FFFFFF; --ink:#14201B; --muted:#5C6A63;
+    --route:#1D6B52; --route-soft:#E4EEE8; --signal:#B08628; --signal-soft:#F3E9CF;
+    --line:#D3D8D0; --line-strong:#BFC6BD; --ok:#1D6B52; --err:#B3362B;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0F1310;--card:#161C18;--ink:#E7EBE4;--muted:#94A399;--route:#54B892;--route-soft:#16261F;
+      --signal:#D6AE56;--signal-soft:#2A2110;--line:#26302A;--line-strong:#374238;--ok:#54B892;--err:#E07B6F;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  .wrap{max-width:820px;margin:0 auto;padding:24px 18px 80px}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:8px}
+  h1{font-family:var(--serif);font-size:1.6rem;margin:0}
+  .tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  select,input,textarea{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:100%}
+  textarea{min-height:80px;resize:vertical}
+  button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:9px 15px;border:1px solid var(--route);background:var(--route);color:#fff}
+  button.sec{background:transparent;color:var(--route)}
+  button.danger{background:transparent;color:var(--err);border-color:var(--err)}
+  button.ghost{background:transparent;color:var(--muted);border-color:var(--line-strong)}
+  .tools select{width:auto}
+
+  .msg{margin:8px 0 18px;font-size:.9rem;min-height:1.1em}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:20px}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .sec-head h2{font-size:1.15rem;margin:0}
+  .sec-head button{margin-left:auto}
+
+  .row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+  .row .num{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:var(--route-soft);color:var(--route);font-family:var(--mono);font-weight:700;display:grid;place-items:center;font-size:.85rem}
+  .row .info{flex:1;min-width:0}
+  .row .info b{display:block}
+  .row .info span{color:var(--muted);font-size:.85rem}
+  .row .acts{display:flex;gap:6px}
+  .row .acts button{padding:7px 11px;font-size:.85rem}
+  .empty{color:var(--muted);font-size:.9rem;padding:8px 2px}
+
+  .form{border:1px dashed var(--line-strong);border-radius:14px;padding:18px;margin-top:6px;display:none;background:var(--paper)}
+  .form.open{display:block}
+  .form h3{margin:0 0 14px;font-size:1rem}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .fld{margin-bottom:12px}
+  .fld.full{grid-column:1/-1}
+  .fld label{display:block;font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .fld .hint{font-size:.72rem;color:var(--muted);margin:4px 0 0}
+  .form .actions{display:flex;gap:10px;margin-top:8px}
+
+  /* login */
+  .login{position:fixed;inset:0;z-index:50;background:var(--paper);display:grid;place-items:center;padding:20px}
+  .login.hide{display:none}
+  .login .box{width:min(380px,92vw);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .login h2{font-family:var(--serif);margin:0 0 4px}
+  .login p{color:var(--muted);font-size:.9rem;margin:0 0 18px}
+  .login .fld{margin-bottom:14px}
+  .login button{width:100%}
+  .login .err{color:var(--err);font-size:.82rem;min-height:1.1em;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+  <form class="box" id="loginForm">
+    <p style="font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal);font-weight:700;margin:0">Admin</p>
+    <h2>Entrar</h2>
+    <p>Acesso restrito ao organizador.</p>
+    <div class="fld"><label>E-mail</label><input id="email" type="email" autocomplete="username" required></div>
+    <div class="fld"><label>Senha</label><input id="password" type="password" autocomplete="current-password" required></div>
+    <button type="submit">Entrar</button>
+    <p class="err" id="loginErr"></p>
+  </form>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Admin</h1>
+    <div class="tools">
+      <select id="envsel"></select>
+      <button class="sec" id="btnNewEnv" type="button">+ Roteiro</button>
+      <button class="ghost" id="logout" type="button">Sair</button>
+    </div>
+  </header>
+  <p class="msg" id="msg"></p>
+
+  <!-- NOVO ROTEIRO -->
+  <div class="form" id="envForm">
+    <h3>Novo roteiro</h3>
+    <div class="grid">
+      <div class="fld"><label>Nome</label><input id="env-name" placeholder="Ex.: Roteiro do Centro"></div>
+      <div class="fld"><label>Código (URL)</label><input id="env-slug" placeholder="ex.: centro-rio"><p class="hint">só letras, números e hífen</p></div>
+    </div>
+    <div class="actions"><button id="env-save" type="button">Criar roteiro</button><button class="ghost" id="env-cancel" type="button">Cancelar</button></div>
+  </div>
+
+  <!-- PONTOS -->
+  <section>
+    <div class="sec-head"><h2>Pontos do roteiro</h2><button id="btnAddPoint" type="button">+ Adicionar ponto</button></div>
+    <div id="pointsList"><p class="empty">Carregando…</p></div>
+
+    <div class="form" id="pointForm">
+      <h3 id="pf-title">Novo ponto</h3>
+      <div class="grid">
+        <div class="fld full"><label>Nome do ponto / obra</label><input id="pf-label" placeholder="Ex.: Theatro Municipal"></div>
+        <div class="fld"><label>Subtítulo</label><input id="pf-sub" placeholder="Ex.: Cinelândia · desde 1909"></div>
+        <div class="fld"><label>Código do QR</label><input id="pf-code" placeholder="ex.: teatro"><p class="hint">vira o QR: ...?node=<b>código</b></p></div>
+        <div class="fld"><label>Ordem</label><input id="pf-order" type="number" value="1"></div>
+        <div class="fld"><label>Patrocinador</label><select id="pf-sponsor"></select></div>
+        <div class="fld"><label>Modelo 3D — GLB (Android)</label><input id="pf-glb" placeholder="arquivo.glb ou URL"></div>
+        <div class="fld"><label>Modelo 3D — USDZ (iPhone)</label><input id="pf-usdz" placeholder="arquivo.usdz ou URL"></div>
+        <div class="fld"><label>Rótulo da seção</label><input id="pf-flabel" placeholder="Ex.: Fundação"></div>
+        <div class="fld full"><label>Texto de apresentação</label><textarea id="pf-body" placeholder="A história do ponto…"></textarea></div>
+        <div class="fld full"><label>Destaques (separados por vírgula)</label><input id="pf-chips" placeholder="1909 inauguração, estilo eclético"></div>
+        <div class="fld"><label>Curiosidade 1 — título</label><input id="pf-c1h"></div>
+        <div class="fld"><label>Curiosidade 1 — texto</label><input id="pf-c1p"></div>
+        <div class="fld"><label>Curiosidade 2 — título</label><input id="pf-c2h"></div>
+        <div class="fld"><label>Curiosidade 2 — texto</label><input id="pf-c2p"></div>
+      </div>
+      <div class="actions"><button id="pf-save" type="button">Salvar ponto</button><button class="ghost" id="pf-cancel" type="button">Cancelar</button></div>
+    </div>
+  </section>
+
+  <!-- PATROCINADORES -->
+  <section>
+    <div class="sec-head"><h2>Patrocinadores</h2><button id="btnAddSponsor" type="button">+ Adicionar patrocinador</button></div>
+    <div id="sponsorsList"><p class="empty">Carregando…</p></div>
+
+    <div class="form" id="sponsorForm">
+      <h3 id="sf-title">Novo patrocinador</h3>
+      <div class="grid">
+        <div class="fld full"><label>Nome da marca</label><input id="sf-name" placeholder="Ex.: Livraria Cultura"></div>
+        <div class="fld full"><label>Oferta / mensagem</label><textarea id="sf-message" placeholder="Ex.: Ganhe 15% apresentando este selo na loja."></textarea></div>
+        <div class="fld"><label>Texto do botão</label><input id="sf-cta" placeholder="Quero esta oferta"></div>
+      </div>
+      <div class="actions"><button id="sf-save" type="button">Salvar patrocinador</button><button class="ghost" id="sf-cancel" type="button">Cancelar</button></div>
+    </div>
+  </section>
+
+  <p style="font-family:var(--mono);font-size:.64rem;color:var(--muted);text-align:center">CampanhaVendavel · painel de administração</p>
+</div>
+
+<script>
+  var SB_URL='https://uhyzpmzxkgprjevnojpf.supabase.co';
+  var SB_KEY='sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
+  var sb=null, envs=[], sponsors=[], points=[], curEnv=null, editNode=null, editSponsor=null;
+
+  function $(id){return document.getElementById(id);}
+  function msg(t,cls){ var m=$('msg'); m.textContent=t; m.className='msg'+(cls?' '+cls:''); if(t) setTimeout(function(){ if(m.textContent===t){m.textContent='';m.className='msg';} },4000); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function show(el,on){ el.classList.toggle('open',on); if(on) el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
+  // ---------- carga ----------
+  async function loadEnvs(){
+    var r=await sb.from('environments').select('id,slug,name').order('created_at');
+    envs=r.data||[]; var s=$('envsel'); s.innerHTML='';
+    envs.forEach(function(e){ var o=document.createElement('option'); o.value=e.id; o.textContent=e.name; s.appendChild(o); });
+    if(envs.length){ curEnv = envs.find(function(e){return e.id===(curEnv&&curEnv.id);})||envs[0]; s.value=curEnv.id; }
+  }
+  async function loadSponsors(){
+    var r=await sb.from('sponsors').select('id,name,message,cta_label').order('name');
+    sponsors=r.data||[]; renderSponsors(); fillSponsorSelect();
+  }
+  async function loadPoints(){
+    if(!curEnv){ points=[]; renderPoints(); return; }
+    var r=await sb.from('physical_nodes')
+      .select('id,label,subtitle,anchor_value,order_index,sponsor_id,experiences(id,body,model_glb_url,model_usdz_url,data)')
+      .eq('environment_id',curEnv.id).order('order_index');
+    points=r.data||[]; renderPoints();
+  }
+
+  function codeOf(n){ return n.anchor_value ? String(n.anchor_value).split(':').pop() : ''; }
+
+  function renderPoints(){
+    var el=$('pointsList');
+    if(!points.length){ el.innerHTML='<p class="empty">Nenhum ponto ainda. Clique em "+ Adicionar ponto".</p>'; return; }
+    el.innerHTML=points.map(function(n,i){
+      var sp = sponsors.find(function(s){return s.id===n.sponsor_id;});
+      return '<div class="row"><span class="num">'+(n.order_index||i+1)+'</span>'+
+        '<div class="info"><b>'+esc(n.label)+'</b><span>'+esc(n.subtitle||'')+(sp?' · ★ '+esc(sp.name):'')+'</span></div>'+
+        '<div class="acts"><button class="sec" data-edit="'+n.id+'" type="button">Editar</button>'+
+        '<button class="danger" data-del="'+n.id+'" type="button">Excluir</button></div></div>';
+    }).join('');
+    el.querySelectorAll('[data-edit]').forEach(function(b){ b.onclick=function(){ openPoint(b.getAttribute('data-edit')); }; });
+    el.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ delPoint(b.getAttribute('data-del')); }; });
+  }
+  function renderSponsors(){
+    var el=$('sponsorsList');
+    if(!sponsors.length){ el.innerHTML='<p class="empty">Nenhum patrocinador ainda.</p>'; return; }
+    el.innerHTML=sponsors.map(function(s){
+      return '<div class="row"><span class="num">★</span><div class="info"><b>'+esc(s.name)+'</b><span>'+esc(s.message||'')+'</span></div>'+
+        '<div class="acts"><button class="sec" data-edits="'+s.id+'" type="button">Editar</button></div></div>';
+    }).join('');
+    el.querySelectorAll('[data-edits]').forEach(function(b){ b.onclick=function(){ openSponsor(b.getAttribute('data-edits')); }; });
+  }
+  function fillSponsorSelect(){
+    var s=$('pf-sponsor'); s.innerHTML='<option value="">— sem patrocinador —</option>';
+    sponsors.forEach(function(sp){ var o=document.createElement('option'); o.value=sp.id; o.textContent=sp.name; s.appendChild(o); });
+  }
+
+  // ---------- ponto: abrir/salvar/excluir ----------
+  function openPoint(id){
+    editNode = id ? points.find(function(n){return n.id===id;}) : null;
+    var n=editNode, x=(n&&n.experiences&&n.experiences[0])||{}, d=x.data||{};
+    var cur=(d.curios||[]);
+    $('pf-title').textContent = n?'Editar ponto':'Novo ponto';
+    $('pf-label').value=n?n.label:''; $('pf-sub').value=n?(n.subtitle||''):'';
+    $('pf-code').value=n?codeOf(n):''; $('pf-order').value=n?(n.order_index||1):(points.length+1);
+    $('pf-sponsor').value=n?(n.sponsor_id||''):'';
+    $('pf-glb').value=x.model_glb_url||''; $('pf-usdz').value=x.model_usdz_url||'';
+    $('pf-flabel').value=d.flabel||'Sobre'; $('pf-body').value=x.body||'';
+    $('pf-chips').value=(d.chips||[]).join(', ');
+    $('pf-c1h').value=(cur[0]&&cur[0].h)||''; $('pf-c1p').value=(cur[0]&&cur[0].p)||'';
+    $('pf-c2h').value=(cur[1]&&cur[1].h)||''; $('pf-c2p').value=(cur[1]&&cur[1].p)||'';
+    show($('pointForm'),true);
+  }
+  async function savePoint(){
+    if(!curEnv){ msg('Crie/selecione um roteiro primeiro.','err'); return; }
+    var label=$('pf-label').value.trim();
+    if(!label){ msg('Informe o nome do ponto.','err'); return; }
+    var code=($('pf-code').value.trim()||label.toLowerCase().replace(/[^a-z0-9]+/g,'-')).replace(/(^-|-$)/g,'');
+    var anchor='CV:'+curEnv.slug+':'+code;
+    var chips=$('pf-chips').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+    var curios=[];
+    if($('pf-c1h').value.trim()||$('pf-c1p').value.trim()) curios.push({h:$('pf-c1h').value.trim(),p:$('pf-c1p').value.trim()});
+    if($('pf-c2h').value.trim()||$('pf-c2p').value.trim()) curios.push({h:$('pf-c2h').value.trim(),p:$('pf-c2p').value.trim()});
+    var data={ flabel:$('pf-flabel').value.trim()||'Sobre', chips:chips, curios:curios };
+    var nodeFields={ label:label, subtitle:$('pf-sub').value.trim(), anchor_value:anchor,
+      order_index:parseInt($('pf-order').value,10)||1, sponsor_id:$('pf-sponsor').value||null };
+    var expFields={ type:'ar_model', title:label, body:$('pf-body').value.trim(),
+      model_glb_url:$('pf-glb').value.trim(), model_usdz_url:$('pf-usdz').value.trim(), data:data };
+    $('pf-save').disabled=true;
+    try{
+      if(editNode){
+        var e1=(await sb.from('physical_nodes').update(nodeFields).eq('id',editNode.id)).error; if(e1) throw e1;
+        var ex=editNode.experiences&&editNode.experiences[0];
+        if(ex){ var e2=(await sb.from('experiences').update(expFields).eq('id',ex.id)).error; if(e2) throw e2; }
+        else { var e3=(await sb.from('experiences').insert(Object.assign({node_id:editNode.id},expFields))).error; if(e3) throw e3; }
+      }else{
+        var ins=await sb.from('physical_nodes').insert(Object.assign({environment_id:curEnv.id,type:'landmark'},nodeFields)).select('id').single();
+        if(ins.error) throw ins.error;
+        var e4=(await sb.from('experiences').insert(Object.assign({node_id:ins.data.id},expFields))).error; if(e4) throw e4;
+      }
+      show($('pointForm'),false); await loadPoints(); msg('Ponto salvo ✓','ok');
+    }catch(err){ msg('Erro ao salvar: '+(err.message||err),'err'); }
+    $('pf-save').disabled=false;
+  }
+  async function delPoint(id){
+    var n=points.find(function(x){return x.id===id;});
+    if(!confirm('Excluir o ponto "'+(n?n.label:'')+'"? Isso não pode ser desfeito.')) return;
+    var e=(await sb.from('physical_nodes').delete().eq('id',id)).error;
+    if(e){ msg('Erro ao excluir: '+e.message,'err'); return; }
+    await loadPoints(); msg('Ponto excluído.','ok');
+  }
+
+  // ---------- patrocinador ----------
+  function openSponsor(id){
+    editSponsor = id ? sponsors.find(function(s){return s.id===id;}) : null;
+    $('sf-title').textContent = editSponsor?'Editar patrocinador':'Novo patrocinador';
+    $('sf-name').value=editSponsor?editSponsor.name:''; $('sf-message').value=editSponsor?(editSponsor.message||''):'';
+    $('sf-cta').value=editSponsor?(editSponsor.cta_label||'Quero esta oferta'):'Quero esta oferta';
+    show($('sponsorForm'),true);
+  }
+  async function saveSponsor(){
+    var name=$('sf-name').value.trim(); if(!name){ msg('Informe o nome da marca.','err'); return; }
+    var f={ name:name, message:$('sf-message').value.trim(), cta_label:$('sf-cta').value.trim()||'Quero esta oferta' };
+    $('sf-save').disabled=true;
+    try{
+      if(editSponsor){ var e1=(await sb.from('sponsors').update(f).eq('id',editSponsor.id)).error; if(e1) throw e1; }
+      else { var e2=(await sb.from('sponsors').insert(Object.assign({tier:'checkpoint'},f))).error; if(e2) throw e2; }
+      show($('sponsorForm'),false); await loadSponsors(); renderPoints(); msg('Patrocinador salvo ✓','ok');
+    }catch(err){ msg('Erro ao salvar: '+(err.message||err),'err'); }
+    $('sf-save').disabled=false;
+  }
+
+  // ---------- novo roteiro ----------
+  async function saveEnv(){
+    var name=$('env-name').value.trim(), slug=$('env-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/(^-|-$)/g,'');
+    if(!name||!slug){ msg('Preencha nome e código.','err'); return; }
+    try{
+      var ins=await sb.from('environments').insert({slug:slug,name:name,kind:'tourism'}).select('id,slug,name').single();
+      if(ins.error) throw ins.error;
+      curEnv=ins.data; show($('envForm'),false); $('env-name').value=''; $('env-slug').value='';
+      await loadEnvs(); $('envsel').value=curEnv.id; await loadPoints(); msg('Roteiro criado ✓','ok');
+    }catch(err){ msg('Erro: '+(err.message||err),'err'); }
+  }
+
+  // ---------- auth ----------
+  function showLogin(){ $('login').classList.remove('hide'); }
+  async function afterLogin(){
+    $('login').classList.add('hide');
+    await loadEnvs(); await loadSponsors(); await loadPoints();
+  }
+  async function checkAuth(){
+    if(!sb){ msg('Biblioteca do banco não carregou.','err'); return; }
+    try{ var s=await sb.auth.getSession(); if(s.data&&s.data.session) afterLogin(); else showLogin(); }catch(e){ showLogin(); }
+  }
+
+  try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){}
+
+  // wiring
+  $('envsel').onchange=function(){ curEnv=envs.find(function(e){return e.id===$('envsel').value;}); loadPoints(); };
+  $('btnNewEnv').onclick=function(){ show($('envForm'),true); };
+  $('env-save').onclick=saveEnv; $('env-cancel').onclick=function(){ show($('envForm'),false); };
+  $('btnAddPoint').onclick=function(){ openPoint(null); };
+  $('pf-save').onclick=savePoint; $('pf-cancel').onclick=function(){ show($('pointForm'),false); };
+  $('btnAddSponsor').onclick=function(){ openSponsor(null); };
+  $('sf-save').onclick=saveSponsor; $('sf-cancel').onclick=function(){ show($('sponsorForm'),false); };
+  $('logout').onclick=async function(){ try{ await sb.auth.signOut(); }catch(e){} showLogin(); };
+  $('loginForm').addEventListener('submit', async function(e){
+    e.preventDefault(); $('loginErr').textContent='';
+    var r=await sb.auth.signInWithPassword({ email:$('email').value.trim(), password:$('password').value });
+    if(r.error){ $('loginErr').textContent='Não foi possível entrar: '+r.error.message; return; }
+    afterLogin();
+  });
+
+  checkAuth();
+</script>
+</body>
+</html>
