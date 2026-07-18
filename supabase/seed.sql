@@ -147,11 +147,10 @@ begin
   insert into public.experiences (node_id,title,body,model_glb_url,model_usdz_url,data) values
     (n,'O 14 Bis',
      'Em <b>23 de outubro de 1906</b>, em Paris, o <b>14 Bis</b> fez o primeiro voo público homologado de um mais-pesado-que-o-ar. Traga o avião em RA e <b>tire sua foto</b>.',
-     'pegasus.glb','pegasus.usdz',
+     '14bis.glb','14bis.usdz',
      jsonb_build_object('flabel','O 14 Bis',
        'chips',jsonb_build_array('<b>1906</b> Paris','primeiro <b>voo público</b>','ponto de <b>foto</b>'),
        'curios',jsonb_build_array(
          jsonb_build_object('h','Voou de cauda na frente','p','O 14 Bis tinha configuração "canard": asas atrás e leme na frente.'),
-         jsonb_build_object('h','60 metros históricos','p','O voo homologado percorreu cerca de 60 metros.')),
-       'note','Modelo do 14 Bis a incluir (placeholder no momento).'));
+         jsonb_build_object('h','60 metros históricos','p','O voo homologado percorreu cerca de 60 metros.'))));
 end $$;

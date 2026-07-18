@@ -124,6 +124,15 @@
   .coupon .code{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:.1em}
 
   .foot{margin-top:20px;font-family:var(--mono);font-size:.66rem;color:var(--muted);text-align:center;line-height:1.7}
+  .privlink{background:none;border:0;color:var(--muted);font:inherit;font-size:.66rem;text-decoration:underline;cursor:pointer;font-family:var(--mono);padding:0}
+
+  .consentbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:20;width:100%;max-width:500px;
+    background:var(--card);border-top:1px solid var(--line-strong);
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.16)}
+  .consentbar p{margin:0 0 10px;font-size:.84rem;color:var(--ink);line-height:1.5}
+  .consentbar p b{color:var(--route)}
+  .consent-actions{display:flex;gap:10px}
+  .consent-actions .btn{flex:1;width:auto;margin-top:0;padding:11px}
 </style>
 </head>
 <body>
@@ -142,7 +151,7 @@
 
     <ul class="points" id="points"></ul>
 
-    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para qualquer acervo ou cidade.</p>
+    <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para qualquer acervo ou cidade.<br><button class="privlink" id="privlink" type="button">Privacidade e dados</button></p>
   </div>
 
   <!-- DETAIL -->
@@ -182,6 +191,15 @@
       </div>
       <a class="btn primary" id="r-cta" style="display:none;text-decoration:none;box-sizing:border-box" href="#" target="_blank" rel="noopener"></a>
       <button class="btn ghost" id="restart">Refazer o roteiro</button>
+    </div>
+  </div>
+
+  <!-- CONSENTIMENTO (LGPD) -->
+  <div id="consent" class="consentbar" style="display:none">
+    <p>Este roteiro registra <b>estatísticas anônimas</b> (quantas pessoas abrem cada ponto e a RA) só para melhorar a experiência. Sem anúncios e sem dados pessoais. Você permite?</p>
+    <div class="consent-actions">
+      <button class="btn primary" id="c-yes" type="button">Permitir</button>
+      <button class="btn ghost" id="c-no" type="button">Só o essencial</button>
     </div>
   </div>
 
@@ -234,6 +252,18 @@
   let visited = {}, current = null, curNodeId = null;
   let localEvents = { scan:0, ar:0, seal:0, reward:0 };
 
+  // ---- Consentimento (LGPD) + persistência ----
+  const CONSENT_VERSION = '1';
+  let consent = null;   // 'granted' | 'denied' | null (ainda não decidiu)
+  function loadConsent(){ try{ const r=JSON.parse(localStorage.getItem('cv_consent')||'null'); if(r && r.v===CONSENT_VERSION) return r.choice; }catch(e){} return null; }
+  function saveConsent(choice){ consent=choice; try{ localStorage.setItem('cv_consent', JSON.stringify({v:CONSENT_VERSION, choice, ts:Date.now()})); }catch(e){} }
+  // Identidade anônima estável (não recria "visitante" a cada refresh).
+  function anonId(){ try{ let a=localStorage.getItem('cv_anon'); if(!a){ a='anon-'+Math.random().toString(36).slice(2)+'-'+Date.now(); localStorage.setItem('cv_anon',a);} return a; }catch(e){ return 'anon-'+Math.random().toString(36).slice(2); } }
+  // Progresso (selos) por roteiro — sobrevive ao recarregar.
+  function progressKey(){ return 'cv_prog_'+ENV_SLUG; }
+  function loadProgress(){ try{ const a=JSON.parse(localStorage.getItem(progressKey())||'[]'); if(Array.isArray(a)) a.forEach(k=>{ visited[k]=true; }); }catch(e){} }
+  function saveProgress(){ try{ localStorage.setItem(progressKey(), JSON.stringify(Object.keys(visited))); }catch(e){} }
+
   const keyOf = m => m.code || m.id;       // identidade estável (mesma online/offline)
   const $ = id => document.getElementById(id);
   const show = s => { document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); $(s).classList.add('active'); window.scrollTo(0,0); };
@@ -281,6 +311,10 @@
   const withTimeout = (p, ms) => Promise.race([ p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)) ]);
 
   async function boot(){
+    // 0) Consentimento + progresso salvos neste aparelho.
+    consent = loadConsent();
+    loadProgress();
+    if(consent === null) showConsent();      // primeira visita: pede consentimento
     // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
     ROTEIRO = FALLBACK; renderHome(); applyReward();
     handleDeepLink();                        // veio de um QR? abre o ponto já
@@ -312,11 +346,8 @@
           flabel:d.flabel||'Sobre', fund:x.body||'', chips:d.chips||[], curios:d.curios||[], note:d.note||'',
           sponsor: sp && sp.name ? { name:sp.name, logo:sp.logo_url||'', message:sp.message||'', cta:sp.cta_label||'Quero esta oferta' } : null };
       });
-      const anonId = 'anon-' + Math.random().toString(36).slice(2) + '-' + Date.now();
-      const { data: s } = await sb.from('participant_sessions')
-        .insert({ environment_id: envId, anon_id: anonId, consent_analytics: true }).select('id').single();
-      sessionId = s ? s.id : null;
       online = true;
+      await ensureSession();                 // só cria sessão se houver consentimento
       $('src').textContent = 'ao vivo'; $('src').classList.add('live');
       renderHome();                         // troca fallback -> dados do banco
     }catch(err){
@@ -344,8 +375,19 @@
     if(m) openDetail(keyOf(m));
   }
 
+  // Cria a sessão anônima só quando há consentimento explícito (LGPD).
+  async function ensureSession(){
+    if(!online || !sb || sessionId || consent!=='granted') return;
+    try{
+      const { data: s } = await sb.from('participant_sessions')
+        .insert({ environment_id: envId, anon_id: anonId(), consent_analytics: true }).select('id').single();
+      sessionId = s ? s.id : null;
+    }catch(e){ /* silencioso */ }
+  }
+
   async function logEvent(kind, nodeId){
     localEvents[kind==='ar_open'?'ar':(kind==='complete'?'seal':(kind==='redeem'?'reward':'scan'))]++;
+    if(consent!=='granted') return;          // sem consentimento: nenhuma telemetria online
     if(online && sb && sessionId){
       try{ await sb.from('interaction_events').insert({ session_id:sessionId, environment_id:envId, node_id:nodeId||null, kind }); }
       catch(e){ /* silencioso: telemetria nunca quebra a experiência */ }
@@ -446,13 +488,20 @@
   // ===================== Ações =====================
   $('collect').onclick = async ()=>{
     if(!current || visited[current]) return;
-    visited[current] = true; await logEvent('complete', curNodeId); renderHome();
+    visited[current] = true; saveProgress(); await logEvent('complete', curNodeId); renderHome();
     if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', curNodeId); show('reward'); }
     else { show('home'); }
   };
   $('narrate').onclick = speakCurrent;
   $('back').onclick = ()=>{ stopSpeak(); show('home'); };
-  $('restart').onclick = ()=>{ stopSpeak(); visited={}; renderHome(); show('home'); };
+  $('restart').onclick = ()=>{ stopSpeak(); visited={}; saveProgress(); renderHome(); show('home'); };
+
+  // ---- Banner de consentimento (LGPD) ----
+  function showConsent(){ const el=$('consent'); if(el) el.style.display=''; }
+  function hideConsent(){ const el=$('consent'); if(el) el.style.display='none'; }
+  $('c-yes').onclick = async ()=>{ saveConsent('granted'); hideConsent(); await ensureSession(); if(current) logEvent('scan', curNodeId); };
+  $('c-no').onclick  = ()=>{ saveConsent('denied'); hideConsent(); };
+  $('privlink').onclick = ()=>{ showConsent(); window.scrollTo(0, document.body.scrollHeight); };
 
   boot();
 </script>
