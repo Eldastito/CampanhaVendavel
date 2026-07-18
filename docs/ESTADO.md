@@ -54,11 +54,11 @@ Colunas de brinde por campanha em `environments`: `reward_title`, `reward_code`,
 
 ## Dívidas técnicas conhecidas (ver avaliação em docs/AVALIACAO-CONSOLIDACAO.md quando existir)
 
-1. **Banco não versionado** (risco alto): schema, RPCs e RLS existem só no projeto Supabase, não há `supabase/migrations` nem `seed.sql`. Se o projeto sumir, não há como reconstruir.
-2. **Consentimento LGPD** no roteiro cultural: hoje a sessão é criada com `consent_analytics: true` sem perguntar.
-3. **Sessão/progresso não persistem**: a cada refresh cria-se um "novo visitante"; selos não sobrevivem ao recarregar.
-4. **QR/Studio**: `qr.html` usa listas fixas por roteiro (não lê do banco). `admin.html` já faz CRUD, mas sem upload de modelos.
+1. ~~**Banco não versionado**~~ ✅ RESOLVIDO — schema, RLS, RPCs e seed agora estão em `supabase/migrations/` + `supabase/seed.sql` (validados em Postgres local). Ver `supabase/README.md` para reconstruir. _Obs.: reconstruído do código, não é dump byte-a-byte; para cópia exata, exportar via painel do Supabase._
+2. **Consentimento LGPD** no roteiro cultural: hoje a sessão é criada com `consent_analytics: true` sem perguntar. _(pendente)_
+3. **Sessão/progresso não persistem**: a cada refresh cria-se um "novo visitante"; selos não sobrevivem ao recarregar. _(pendente)_
+4. **QR/Studio**: `qr.html` usa listas fixas por roteiro (não lê do banco). `admin.html` já faz CRUD, mas sem upload de modelos. _(pendente)_
 
 ## Próximo passo sugerido
 
-Fechar o **teste do cinema** (receita imediata) e, em paralelo, atacar a dívida #1 (versionar o banco). Detalhes e prioridação na avaliação abaixo.
+Fechar o **teste do cinema** (receita imediata). Dívidas restantes baratas: consentimento LGPD (#2) e persistir sessão/progresso (#3).
