@@ -131,9 +131,9 @@
 
   <!-- HOME -->
   <div id="home" class="screen active">
-    <p class="eyebrow">Roteiro Cultural · <span class="badge">demo</span><span id="src" class="src">offline</span></p>
-    <h1>Patrimônio em Realidade Aumentada</h1>
-    <p class="sub">Três obras, três histórias. Em cada ponto, a arte aparece em <b>RA</b> no seu espaço. Complete o passaporte e ganhe um brinde.</p>
+    <p class="eyebrow" id="h-eyebrow">Roteiro Cultural · <span class="badge">demo</span><span id="src" class="src">offline</span></p>
+    <h1 id="h-title">Patrimônio em Realidade Aumentada</h1>
+    <p class="sub" id="h-sub">Em cada ponto, a experiência aparece em <b>RA</b> no seu espaço. Complete o passaporte e ganhe um brinde.</p>
 
     <div class="passport">
       <div><span class="lbl">Passaporte</span><b id="seal-count">0 selos</b></div>
@@ -173,13 +173,14 @@
   <div id="reward" class="screen">
     <div class="reward">
       <div class="medal">🏅</div>
-      <h1>Roteiro concluído!</h1>
-      <p class="sub">Você percorreu as três obras e completou o passaporte cultural.</p>
+      <h1 id="r-title">Roteiro concluído!</h1>
+      <p class="sub" id="r-sub">Você percorreu as três obras e completou o passaporte cultural.</p>
       <div class="coupon">
         <p class="eyebrow" style="text-align:center">Seu brinde</p>
-        <div class="code">CULTURA-2026</div>
-        <p class="sub" style="margin:8px 0 0;font-size:.85rem">Apresente na bilheteria para retirar.</p>
+        <div class="code" id="r-code">CULTURA-2026</div>
+        <p class="sub" id="r-hint" style="margin:8px 0 0;font-size:.85rem">Apresente na bilheteria para retirar.</p>
       </div>
+      <a class="btn primary" id="r-cta" style="display:none;text-decoration:none;box-sizing:border-box" href="#" target="_blank" rel="noopener"></a>
       <button class="btn ghost" id="restart">Refazer o roteiro</button>
     </div>
   </div>
@@ -190,7 +191,17 @@
   // ===================== Configuração do backend =====================
   const SB_URL  = 'https://uhyzpmzxkgprjevnojpf.supabase.co';
   const SB_KEY  = 'sb_publishable_1Sgig8MNztFmgH2NnjcBpA__kp3Pp5S';
-  const ENV_SLUG = 'rio-centro';
+  // ?r=slug escolhe QUAL roteiro carregar (cultura, estreia, imóvel…). Sem parâmetro = rio-centro.
+  const ENV_SLUG = (()=>{ try{ return (new URLSearchParams(location.search).get('r')||'').trim() || 'rio-centro'; }catch(e){ return 'rio-centro'; } })();
+
+  // Brinde padrão (offline). O banco pode sobrescrever via colunas reward_* do environment.
+  let REWARD = {
+    title:'Roteiro concluído!',
+    sub:'Você completou todos os pontos e desbloqueou seu brinde.',
+    code:'CULTURA-2026',
+    hint:'Apresente na bilheteria para retirar.',
+    cta_label:'', cta_url:''
+  };
 
   // ===================== Roteiro de fallback (offline) =====================
   // Se o banco falhar, o app usa isto — nunca fica sem conteúdo na frente do cliente.
@@ -271,16 +282,22 @@
 
   async function boot(){
     // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
-    ROTEIRO = FALLBACK; renderHome();
+    ROTEIRO = FALLBACK; renderHome(); applyReward();
     handleDeepLink();                        // veio de um QR? abre o ponto já
     // 2) Em segundo plano, tenta subir para dados "ao vivo" (com timeout).
     try{
       if(!window.supabase || !window.supabase.createClient) throw new Error('supabase.js não carregou');
       sb = window.supabase.createClient(SB_URL, SB_KEY);
       const { data: env, error: e1 } = await withTimeout(
-        sb.from('environments').select('id,name').eq('slug', ENV_SLUG).single(), 8000);
+        sb.from('environments').select('id,name,reward_title,reward_code,cta_label,cta_url').eq('slug', ENV_SLUG).single(), 8000);
       if(e1 || !env) throw e1 || new Error('roteiro não encontrado');
       envId = env.id;
+      if(env.reward_title) REWARD.title = env.reward_title;
+      if(env.reward_code)  REWARD.code  = env.reward_code;
+      if(env.cta_label)    REWARD.cta_label = env.cta_label;
+      if(env.cta_url)      REWARD.cta_url   = env.cta_url;
+      if(env.name && $('h-title')) $('h-title').textContent = env.name;
+      applyReward();
       const { data: nodes, error: e2 } = await withTimeout(sb.from('physical_nodes')
         .select('id,label,subtitle,anchor_value,order_index,experiences(title,body,model_glb_url,model_usdz_url,data),sponsors(name,logo_url,message,cta_label)')
         .eq('environment_id', envId).order('order_index'), 8000);
@@ -332,6 +349,26 @@
     if(online && sb && sessionId){
       try{ await sb.from('interaction_events').insert({ session_id:sessionId, environment_id:envId, node_id:nodeId||null, kind }); }
       catch(e){ /* silencioso: telemetria nunca quebra a experiência */ }
+    }
+  }
+
+  // Aplica o brinde (título/código/CTA) na tela de recompensa — do banco ou do padrão.
+  function applyReward(){
+    if($('r-title')) $('r-title').textContent = REWARD.title;
+    if($('r-sub'))   $('r-sub').textContent   = REWARD.sub;
+    if($('r-code'))  $('r-code').textContent  = REWARD.code;
+    if($('r-hint'))  $('r-hint').textContent  = REWARD.hint;
+    const cta = $('r-cta');
+    if(cta){
+      if(REWARD.cta_label && REWARD.cta_url){
+        cta.textContent = REWARD.cta_label;
+        cta.href = REWARD.cta_url;
+        cta.style.display = '';
+        cta.onclick = ()=>{ logEvent('redeem', curNodeId); };
+        if($('r-hint')) $('r-hint').textContent = 'Use o código acima e toque no botão abaixo.';
+      } else {
+        cta.style.display = 'none';
+      }
     }
   }
 

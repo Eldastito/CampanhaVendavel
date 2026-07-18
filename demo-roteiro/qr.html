@@ -63,10 +63,14 @@
         <label for="base">Endereço do site publicado (Netlify)</label>
         <input id="base" type="url" placeholder="https://seu-site.netlify.app" />
       </div>
+      <div style="flex:0 0 auto;min-width:180px">
+        <label for="roteiro">Roteiro</label>
+        <select id="roteiro" style="width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)"></select>
+      </div>
       <button id="gen">Gerar QR Codes</button>
       <button id="print" class="sec">Imprimir</button>
     </div>
-    <p class="hint">Cole aqui o link que o Netlify te deu (ex.: <code>https://roteiro-rio.netlify.app</code>). O endereço fica salvo neste navegador. Depois clique em <b>Imprimir</b> → Salvar como PDF, e leve para a gráfica.</p>
+    <p class="hint">Cole o link do Netlify (ex.: <code>https://vivaar.netlify.app</code>) e escolha o <b>roteiro</b>. O endereço fica salvo neste navegador. Depois clique em <b>Imprimir</b> → Salvar como PDF, e leve para a gráfica.</p>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -75,12 +79,26 @@
 </div>
 
 <script>
-  // Pontos do roteiro (code = mesmo valor usado no app, em ?node=CODE)
-  var PONTOS = [
-    { code:'teatro', nome:'Theatro Municipal', place:'Rio de Janeiro · Cinelândia' },
-    { code:'pegaso', nome:'Pégaso',            place:'O cavalo alado das artes' },
-    { code:'pietat', nome:'Pietat',            place:'Museu Frederic Marès' }
-  ];
+  // Roteiros disponíveis. slug = ?r=slug ; cada ponto vira ?r=slug&node=code.
+  // (Mesmos slugs/codes cadastrados no banco — o app resolve o ponto pelo code.)
+  var ROTEIROS = {
+    'rio-centro': {
+      nome:'Roteiro Cultural — Centro do Rio',
+      pontos:[
+        { code:'teatro', nome:'Theatro Municipal', place:'Rio de Janeiro · Cinelândia' },
+        { code:'pegaso', nome:'Pégaso',            place:'O cavalo alado das artes' },
+        { code:'pietat', nome:'Pietat',            place:'Museu Frederic Marès' }
+      ]
+    },
+    'estreia': {
+      nome:'Estreia — Caça aos Heróis',
+      pontos:[
+        { code:'heroi1', nome:'Herói 1', place:'Entrada · portão do cinema' },
+        { code:'heroi2', nome:'Herói 2', place:'Praça de alimentação' },
+        { code:'heroi3', nome:'Herói 3', place:'Corredor das salas' }
+      ]
+    }
+  };
 
   function qrSvg(text){
     var qr = qrcode(0, 'M');        // tipo auto, correção M
@@ -95,11 +113,19 @@
     return v.replace(/\/+$/,'');           // sem barra no fim
   }
 
+  var sel = document.getElementById('roteiro');
+  Object.keys(ROTEIROS).forEach(function(slug){
+    var o = document.createElement('option'); o.value = slug; o.textContent = ROTEIROS[slug].nome; sel.appendChild(o);
+  });
+
   function render(){
     var base = normalizeBase(document.getElementById('base').value);
+    var slug = sel.value || Object.keys(ROTEIROS)[0];
+    var pontos = (ROTEIROS[slug] || {}).pontos || [];
     var grid = document.getElementById('grid'); grid.innerHTML = '';
-    PONTOS.forEach(function(p){
-      var url = base ? (base + '/roteiro.html?node=' + encodeURIComponent(p.code)) : ('roteiro.html?node=' + p.code);
+    pontos.forEach(function(p){
+      var qs = 'roteiro.html?r=' + encodeURIComponent(slug) + '&node=' + encodeURIComponent(p.code);
+      var url = base ? (base + '/' + qs) : qs;
       var card = document.createElement('div'); card.className = 'qcard';
       card.innerHTML =
         '<p class="eyebrow">Aponte a câmera</p>' +
@@ -112,14 +138,19 @@
     });
   }
 
-  var saved = null;
-  try{ saved = localStorage.getItem('cv_base'); }catch(e){}
-  if(saved) document.getElementById('base').value = saved;
+  try{
+    var savedBase = localStorage.getItem('cv_base'); if(savedBase) document.getElementById('base').value = savedBase;
+    var savedRot = localStorage.getItem('cv_roteiro'); if(savedRot && ROTEIROS[savedRot]) sel.value = savedRot;
+  }catch(e){}
 
   document.getElementById('gen').onclick = function(){
-    try{ localStorage.setItem('cv_base', document.getElementById('base').value.trim()); }catch(e){}
+    try{
+      localStorage.setItem('cv_base', document.getElementById('base').value.trim());
+      localStorage.setItem('cv_roteiro', sel.value);
+    }catch(e){}
     render();
   };
+  sel.onchange = render;
   document.getElementById('print').onclick = function(){ window.print(); };
   render();
 </script>
