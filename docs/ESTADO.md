@@ -33,7 +33,7 @@ Libs vendorizadas localmente (sem CDN, para não dar tela preta): `model-viewer.
 | slug | Nome | Pontos | Modelos | Status |
 |---|---|---|---|---|
 | `rio-centro` | Roteiro Cultural — Centro do Rio | teatro, pegaso, pietat | reais | pronto |
-| `estreia` | Estreia — Caça aos Heróis (cinema) | heroi1, heroi2, heroi3 | **placeholder** (pegasus) | demo pronta; personagens placeholder por direitos Marvel |
+| `estreia` | Estreia — Caça aos Heróis (cinema) | heroi1, heroi2, heroi3 | heroi1=**Mulher Invisível** (real, tamanho real 1,7 m); heroi2/3=placeholder | heroi1 pronto p/ teste; faltam 2 personagens (arquivos grandes) |
 | `encantada` | A Encantada — Santos Dumont | escada, interior, foto | foto=**14 Bis real**; escada/interior=placeholder | ponto foto com 14 Bis (1,2 m); faltam modelos do personagem |
 
 Colunas de brinde por campanha em `environments`: `reward_title`, `reward_code`, `cta_label`, `cta_url`.

@@ -82,12 +82,16 @@ begin
   delete from public.physical_nodes where environment_id=v_env;
 
   insert into public.physical_nodes (environment_id,label,subtitle,anchor_value,order_index,sponsor_id)
-  values (v_env,'Herói 1','Entrada · portão do cinema','CV:estreia:heroi1',1,v_sp) returning id into n;
+  values (v_env,'Mulher Invisível','Entrada · portão do cinema','CV:estreia:heroi1',1,v_sp) returning id into n;
   insert into public.experiences (node_id,title,body,model_glb_url,model_usdz_url,data) values
-    (n,'Herói 1','Personagem placeholder 1 — troque pelo modelo licenciado do filme.','pegasus.glb','pegasus.usdz',
-     jsonb_build_object('flabel','Sobre','chips',jsonb_build_array('<b>placeholder</b>'),
-       'curios',jsonb_build_array(jsonb_build_object('h','Nota','p','Modelo placeholder até licenciar o personagem.')),
-       'note','Personagem 3D provisório (placeholder).'));
+    (n,'Mulher Invisível',
+     'A <b>Mulher Invisível</b> (Sue Storm) apareceu na entrada! Ela pode ficar invisível e criar campos de força. Toque em <b>Ver em RA</b>, traga a heroína para o seu lado e <b>tire sua foto</b>.',
+     'invisible.glb','invisible.usdz',
+     jsonb_build_object('flabel','A heroína',
+       'chips',jsonb_build_array('<b>tamanho real</b>','ponto de <b>foto</b>','1 de <b>3</b> heróis'),
+       'curios',jsonb_build_array(
+         jsonb_build_object('h','Invisibilidade','p','Sue Storm consegue desaparecer e também deixar objetos e pessoas invisíveis.'),
+         jsonb_build_object('h','Campos de força','p','Ela cria escudos e plataformas de energia — uma das heroínas mais poderosas.'))));
 
   insert into public.physical_nodes (environment_id,label,subtitle,anchor_value,order_index)
   values (v_env,'Herói 2','Praça de alimentação','CV:estreia:heroi2',2) returning id into n;
