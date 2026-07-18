@@ -70,7 +70,7 @@
       <button id="gen">Gerar QR Codes</button>
       <button id="print" class="sec">Imprimir</button>
     </div>
-    <p class="hint">Cole o link do Netlify (ex.: <code>https://vivaar.netlify.app</code>) e escolha o <b>roteiro</b>. O endereço fica salvo neste navegador. Depois clique em <b>Imprimir</b> → Salvar como PDF, e leve para a gráfica.</p>
+    <p class="hint">Cole o link do Netlify (ex.: <code>https://vivaar.netlify.app</code>) e escolha o <b>roteiro</b>. O endereço fica salvo neste navegador. Depois clique em <b>Imprimir</b> → Salvar como PDF, e leve para a gráfica.<br><b>Onde não pode colar QR</b> (parede tombada): use <b>📶 Copiar link p/ NFC</b> e grave a mesma URL numa tag NFC com um app gravador (ex.: NFC Tools). O toque do celular abre a mesma experiência.</p>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -96,6 +96,14 @@
         { code:'heroi1', nome:'Herói 1', place:'Entrada · portão do cinema' },
         { code:'heroi2', nome:'Herói 2', place:'Praça de alimentação' },
         { code:'heroi3', nome:'Herói 3', place:'Corredor das salas' }
+      ]
+    },
+    'encantada': {
+      nome:'A Encantada — Santos Dumont',
+      pontos:[
+        { code:'escada',   nome:'Santos Dumont na escada', place:'Escada · boas-vindas' },
+        { code:'interior', nome:'A curiosidade do inventor', place:'Dentro da casa' },
+        { code:'foto',     nome:'Foto com o 14 Bis',        place:'Ponto de selfie' }
       ]
     }
   };
@@ -133,8 +141,18 @@
         '<p class="place">' + p.place + '</p>' +
         '<div class="qbox">' + qrSvg(url) + '</div>' +
         '<p class="call">Veja em <span>Realidade Aumentada</span></p>' +
-        '<p class="code">' + (base ? url.replace(/^https?:\/\//,'') : '⚠ informe o endereço do site') + '</p>';
+        '<p class="code">' + (base ? url.replace(/^https?:\/\//,'') : '⚠ informe o endereço do site') + '</p>' +
+        (base ? '<button class="sec nfc-btn noprint" type="button" data-url="' + url.replace(/"/g,'&quot;') + '">📶 Copiar link p/ NFC</button>' : '');
       grid.appendChild(card);
+    });
+    // Copiar link p/ gravar em tag NFC (mesma URL do QR)
+    grid.querySelectorAll('.nfc-btn').forEach(function(btn){
+      btn.onclick = function(){
+        var u = btn.getAttribute('data-url');
+        var done = function(){ var t=btn.textContent; btn.textContent='✓ Link copiado'; setTimeout(function(){ btn.textContent=t; }, 1600); };
+        if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(u).then(done, function(){ window.prompt('Copie o link para gravar na tag NFC:', u); }); }
+        else { window.prompt('Copie o link para gravar na tag NFC:', u); }
+      };
     });
   }
 
