@@ -1,14 +1,174 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>CampanhaVendavel</title>
-    <!-- model-viewer: RA nativa (WebXR / Scene Viewer / Quick Look) -->
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CampanhaVendavel — Patrimônio e marcas em Realidade Aumentada</title>
+<script type="module" src="model-viewer.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1310; --ink:#EAF0EA; --muted:#9DB0A5; --route:#54B892; --signal:#D6AE56;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;overflow-x:hidden}
+
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;justify-content:space-between;align-items:center;
+    padding:16px 22px;pointer-events:none}
+  .brand{font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);font-weight:700}
+  .brand b{color:var(--route)}
+  .tag{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+  /* espaço de rolagem controla a câmera */
+  .scroll-space{height:520vh;position:relative}
+  .stage{position:sticky;top:0;height:100dvh;overflow:hidden}
+  model-viewer{position:absolute;inset:0;width:100%;height:100%;
+    --poster-color:transparent;background:radial-gradient(120% 120% at 50% 30%, #17201b 0%, #0F1310 70%);
+    transition:opacity .6s ease}
+  #mvPeg{opacity:0}
+
+  .scrim{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg, rgba(15,19,16,.55) 0%, rgba(15,19,16,0) 30%, rgba(15,19,16,0) 55%, rgba(15,19,16,.82) 100%)}
+
+  .caps{position:absolute;inset:0;z-index:10;pointer-events:none}
+  .cap{position:absolute;left:0;right:0;bottom:12dvh;padding:0 26px;max-width:620px;margin:0 auto;
+    opacity:0;transform:translateY(18px);transition:opacity .5s ease, transform .5s ease}
+  .cap.on{opacity:1;transform:none}
+  .cap .k{font-family:var(--mono);font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:10px}
+  .cap h2{font-family:var(--serif);font-size:clamp(1.9rem,6vw,3.1rem);line-height:1.03;letter-spacing:-.01em}
+  .cap p{color:var(--muted);font-size:clamp(1rem,2.6vw,1.2rem);margin-top:12px;max-width:34ch}
+
+  .hint{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:12;
+    font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    transition:opacity .4s}
+  .hint::after{content:"";display:block;width:1px;height:26px;margin:8px auto 0;
+    background:linear-gradient(var(--muted),transparent)}
+
+  /* seção final / CTA */
+  .end{position:relative;z-index:20;background:var(--bg);padding:14dvh 26px 16dvh;text-align:center}
+  .end .k{font-family:var(--mono);font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;color:var(--signal);font-weight:700}
+  .end h2{font-family:var(--serif);font-size:clamp(2rem,7vw,3.4rem);line-height:1.05;margin:10px 0 6px;max-width:16ch;margin-inline:auto}
+  .end p{color:var(--muted);max-width:52ch;margin:0 auto 26px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .pill{font-family:var(--mono);font-size:.72rem;border:1px solid #2a3630;border-radius:999px;padding:9px 15px;color:var(--ink)}
+  .pill b{color:var(--route)}
+  .cta{display:inline-block;margin-top:26px;background:var(--route);color:#0F1310;font-weight:800;
+    text-decoration:none;border-radius:999px;padding:14px 26px}
+  .foot{margin-top:40px;font-family:var(--mono);font-size:.62rem;color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){
+    .scroll-space{height:auto}.stage{position:relative;height:80dvh}.cap{opacity:1;transform:none;position:relative;bottom:auto;padding:24px}
+    .caps{position:relative}.hint{display:none}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">Campanha<b>Vendavel</b></span>
+    <span class="tag">Reality Marketing</span>
+  </div>
+
+  <div class="scroll-space" id="space">
+    <div class="stage">
+      <model-viewer id="mvTeatro" src="teatro-municipal.glb"
+        camera-orbit="-25deg 82deg 180%" field-of-view="30deg" interaction-prompt="none"
+        disable-zoom disable-tap shadow-intensity="1" exposure="1.05" loading="eager"></model-viewer>
+      <model-viewer id="mvPeg" src="pegasus.glb"
+        camera-orbit="0deg 80deg 150%" field-of-view="30deg" interaction-prompt="none"
+        disable-zoom disable-tap shadow-intensity="1" exposure="1.05" loading="eager"></model-viewer>
+      <div class="scrim"></div>
+
+      <div class="caps" id="caps">
+        <div class="cap" data-i="0">
+          <p class="k">Patrimônio · Cultura · Marcas</p>
+          <h2>O mundo físico ganha vida.</h2>
+          <p>Monumentos, produtos e marcas em Realidade Aumentada — direto no navegador do celular.</p>
+        </div>
+        <div class="cap" data-i="1">
+          <p class="k">Sem instalar app</p>
+          <h2>Aponte a câmera. Ele aparece.</h2>
+          <p>O visitante escaneia um QR no local e a obra surge no espaço, em escala real.</p>
+        </div>
+        <div class="cap" data-i="2">
+          <p class="k">Encantamento com propósito</p>
+          <h2>Cada peça conta sua história.</h2>
+          <p>Narração, curiosidades e um passaporte que leva o visitante de ponto em ponto.</p>
+        </div>
+        <div class="cap" data-i="3">
+          <p class="k">O que fecha a conta</p>
+          <h2>E você mede tudo.</h2>
+          <p>Um painel mostra quem circulou, onde parou e o que converteu — o dado que vende.</p>
+        </div>
+      </div>
+      <div class="hint" id="hint">role para explorar</div>
+    </div>
+  </div>
+
+  <section class="end">
+    <p class="k">Uma plataforma, muitos espaços</p>
+    <h2>Feiras, museus, marcas, lançamentos.</h2>
+    <p>O mesmo motor que traz um monumento à vida traz o produto de uma marca ou a casa de um lançamento imobiliário. Muda o conteúdo — não a tecnologia.</p>
+    <div class="row">
+      <span class="pill"><b>RA</b> no navegador</span>
+      <span class="pill"><b>QR</b> no local</span>
+      <span class="pill"><b>Painel</b> de circulação</span>
+    </div>
+    <div class="row" style="margin-top:26px">
+      <a class="cta" href="roteiro.html">Ver o roteiro cultural</a>
+      <a class="cta" href="imovel.html" style="background:transparent;color:var(--route);border:1px solid var(--route)">Lançamento imobiliário</a>
+    </div>
+    <p class="foot">CampanhaVendavel — modelos 3D reais (Theatro Municipal, Pégaso). Sem vídeo pré-renderizado.</p>
+  </section>
+
+<script type="module">
+  const space=document.getElementById('space');
+  const mvT=document.getElementById('mvTeatro'), mvP=document.getElementById('mvPeg');
+  const caps=[...document.querySelectorAll('.cap')];
+  const hint=document.getElementById('hint');
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+  function frame(){
+    if(reduce) return;
+    const rect=space.getBoundingClientRect();
+    const total=space.offsetHeight-window.innerHeight;
+    const p=clamp(-rect.top/total,0,1);         // 0..1 progresso do scroll
+
+    // Câmera: Teatro na 1ª metade (voa de longe pra perto, orbitando)
+    if(p<0.55){
+      const t=p/0.55;
+      const theta=lerp(-25,95,t), phi=lerp(82,66,t), rad=lerp(180,95,t);
+      mvT.cameraOrbit=`${theta}deg ${phi}deg ${rad}%`;
+    }else{
+      const t=(p-0.55)/0.45;
+      const theta=lerp(-10,150,t), phi=lerp(80,72,t), rad=lerp(150,95,t);
+      mvP.cameraOrbit=`${theta}deg ${phi}deg ${rad}%`;
+    }
+    // Crossfade Teatro -> Pégaso (conclui cedo, sem restos do Teatro)
+    const fade=clamp((p-0.45)/0.09,0,1);
+    mvP.style.opacity=fade; mvT.style.opacity=1-fade;
+
+    // Legendas: 4 janelas
+    const seg=p*caps.length;
+    caps.forEach((c,i)=>{
+      const d=Math.abs(seg-(i+0.5));
+      c.classList.toggle('on', d<0.55);
+    });
+    hint.style.opacity = p>0.06 ? 0 : 1;
+  }
+
+  let ticking=false;
+  function onScroll(){ if(!ticking){ requestAnimationFrame(()=>{frame();ticking=false;}); ticking=true; } }
+  addEventListener('scroll', onScroll, {passive:true});
+  addEventListener('resize', frame);
+  // primeira legenda visível já no topo
+  caps[0].classList.add('on');
+  frame();
+</script>
+</body>
 </html>

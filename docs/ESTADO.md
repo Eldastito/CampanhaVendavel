@@ -8,14 +8,14 @@ Ponto de retomada rápido. Se você abrir uma sessão nova, comece lendo este ar
 
 - **Repositório único**: `Eldastito/CampanhaVendavel` (branch `main`).
 - **Deploy automático**: cada push na `main` → Netlify republica **https://vivaar.netlify.app**.
-- **Pasta publicada**: `demo-roteiro/` (definido em `netlify.toml`, `publish = "demo-roteiro"`).
+- **Pasta publicada**: a **raiz** do repo (`netlify.toml`, `publish = "."`). O site foi achatado para a raiz (antes ficava em `demo-roteiro/`, o que causava 404 quando o Netlify servia a raiz). O scaffold React morto (`src/`, `vite.config.ts`) foi removido.
 - **Backend**: Supabase (projeto `uhyzpmzxkgprjevnojpf`). Auth por e-mail, Postgres, 1 Edge Function.
 - **Login organizador**: `eldastito@gmail.com` / senha definida no Supabase (não versionada aqui).
 
 > Observação importante: o produto real são os apps HTML de arquivo único em `demo-roteiro/`.
 > A pasta `src/` (React/TS/Vite) é um scaffold antigo **não usado** — não é deployado.
 
-## Apps publicados (em `demo-roteiro/`)
+## Apps publicados (na raiz do repo)
 
 | Arquivo | Função | Acesso |
 |---|---|---|

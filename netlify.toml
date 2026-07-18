@@ -1,4 +1,19 @@
-# Publica a pasta do site (deploy automático via GitHub)
+# Site estático servido da RAIZ do repositório (deploy automático via GitHub).
+# O site foi achatado para a raiz para eliminar a confusão de pasta de publicação.
 [build]
-  publish = "demo-roteiro"
+  publish = "."
   command = ""
+
+# Não expor pastas internas (documentação, banco, skills) na URL pública.
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+[[redirects]]
+  from = "/.claude/*"
+  to = "/404.html"
+  status = 404
