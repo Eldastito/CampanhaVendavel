@@ -142,18 +142,6 @@
 
     <ul class="points" id="points"></ul>
 
-    <button class="panel-toggle" id="panelToggle">▸ Ver painel do organizador (o que a Secretaria enxerga)</button>
-    <div class="panel" id="panel">
-      <h3>Telemetria</h3>
-      <p class="live-tag" id="liveTag">● dados desta sessão</p>
-      <div class="kpis">
-        <div class="kpi"><b id="k-scan">0</b><span>Visitas a pontos</span></div>
-        <div class="kpi"><b id="k-ar">0</b><span>RA aberta</span></div>
-        <div class="kpi"><b id="k-seal">0</b><span>Selos coletados</span></div>
-        <div class="kpi"><b id="k-reward">0</b><span>Brindes</span></div>
-      </div>
-    </div>
-
     <p class="foot">CampanhaVendavel · demonstração<br>Roteiro ampliável para qualquer acervo ou cidade.</p>
   </div>
 
@@ -283,7 +271,7 @@
 
   async function boot(){
     // 1) Conteúdo instantâneo — o app NUNCA aparece vazio, mesmo sem rede.
-    ROTEIRO = FALLBACK; renderHome(); renderPanel();
+    ROTEIRO = FALLBACK; renderHome();
     handleDeepLink();                        // veio de um QR? abre o ponto já
     // 2) Em segundo plano, tenta subir para dados "ao vivo" (com timeout).
     try{
@@ -313,8 +301,7 @@
       sessionId = s ? s.id : null;
       online = true;
       $('src').textContent = 'ao vivo'; $('src').classList.add('live');
-      $('liveTag').textContent = '● dados reais de todos os visitantes';
-      renderHome(); renderPanel();          // troca fallback -> dados do banco
+      renderHome();                         // troca fallback -> dados do banco
     }catch(err){
       console.warn('[CampanhaVendavel] modo offline:', err && err.message);
       online = false;                        // fallback já está na tela
@@ -419,30 +406,16 @@
     show('detail');
   }
 
-  async function renderPanel(){
-    if(online && sb){
-      try{
-        const { data } = await sb.rpc('roteiro_stats', { env_slug: ENV_SLUG });
-        const map = { scan:0, ar_open:0, complete:0, redeem:0 };
-        (data||[]).forEach(r=>{ if(r.kind in map) map[r.kind]=Number(r.total); });
-        $('k-scan').textContent=map.scan; $('k-ar').textContent=map.ar_open; $('k-seal').textContent=map.complete; $('k-reward').textContent=map.redeem;
-        return;
-      }catch(e){ /* cai para local */ }
-    }
-    $('k-scan').textContent=localEvents.scan; $('k-ar').textContent=localEvents.ar; $('k-seal').textContent=localEvents.seal; $('k-reward').textContent=localEvents.reward;
-  }
-
   // ===================== Ações =====================
   $('collect').onclick = async ()=>{
     if(!current || visited[current]) return;
     visited[current] = true; await logEvent('complete', curNodeId); renderHome();
-    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', curNodeId); renderPanel(); show('reward'); }
-    else { renderPanel(); show('home'); }
+    if(Object.keys(visited).length === ROTEIRO.length){ await logEvent('redeem', curNodeId); show('reward'); }
+    else { show('home'); }
   };
   $('narrate').onclick = speakCurrent;
   $('back').onclick = ()=>{ stopSpeak(); show('home'); };
-  $('restart').onclick = ()=>{ stopSpeak(); visited={}; localEvents={scan:0,ar:0,seal:0,reward:0}; renderHome(); renderPanel(); show('home'); };
-  $('panelToggle').onclick = function(){ const p=$('panel'); const o=p.classList.toggle('open'); this.textContent=(o?'▾':'▸')+' Ver painel do organizador (o que a Secretaria enxerga)'; if(o) renderPanel(); };
+  $('restart').onclick = ()=>{ stopSpeak(); visited={}; renderHome(); show('home'); };
 
   boot();
 </script>
