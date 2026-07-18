@@ -58,6 +58,14 @@
   .consent input{width:auto;margin:3px 0 0}
   .btn{width:100%;font:inherit;font-weight:800;border-radius:12px;padding:14px;cursor:pointer;border:1px solid var(--brand);background:var(--brand);color:#fff}
   .btn:disabled{opacity:.5;cursor:default}
+  .privlink{background:none;border:0;color:var(--muted);font:inherit;font-size:.66rem;text-decoration:underline;cursor:pointer;font-family:var(--mono);padding:0}
+  .consentbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:20;width:100%;max-width:500px;background:var(--card);border-top:1px solid var(--line-strong);padding:14px 16px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.16)}
+  .consentbar p{margin:0 0 10px;font-size:.84rem;color:var(--ink);line-height:1.5}
+  .consentbar p b{color:var(--brand)}
+  .consent-actions{display:flex;gap:10px}
+  .consent-actions button{flex:1;font:inherit;font-weight:800;border-radius:12px;padding:11px;cursor:pointer}
+  .consent-actions .yes{border:1px solid var(--brand);background:var(--brand);color:#fff}
+  .consent-actions .no{border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
   .msg{margin:12px 0 0;font-size:.88rem;min-height:1.1em}
   .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
   .done{text-align:center;padding:16px 4px}
@@ -106,7 +114,16 @@
     </form>
   </div>
 
-  <p class="foot">CampanhaVendavel · vertical imobiliária — mesma tecnologia, outro conteúdo.</p>
+  <p class="foot">CampanhaVendavel · vertical imobiliária — mesma tecnologia, outro conteúdo.<br><button class="privlink" id="privlink" type="button">Privacidade e dados</button></p>
+
+  <!-- CONSENTIMENTO DE ANALYTICS (LGPD) — separado do consentimento de contato do lead -->
+  <div id="analyticsConsent" class="consentbar" style="display:none">
+    <p>Esta página registra <b>estatísticas anônimas</b> (visitas e aberturas da RA) só para medir o interesse no lançamento. Sem dados pessoais. Você permite?</p>
+    <div class="consent-actions">
+      <button class="yes" id="ac-yes" type="button">Permitir</button>
+      <button class="no" id="ac-no" type="button">Só o essencial</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -125,7 +142,20 @@
   const $=id=>document.getElementById(id);
   const synth=window.speechSynthesis||null;
 
+  // ---- Consentimento de analytics (LGPD). Chave compartilhada com o roteiro. ----
+  const CONSENT_VERSION='1';
+  let consent=null;   // 'granted' | 'denied' | null
+  function loadConsent(){ try{ const r=JSON.parse(localStorage.getItem('cv_consent')||'null'); if(r&&r.v===CONSENT_VERSION) return r.choice; }catch(e){} return null; }
+  function saveConsent(c){ consent=c; try{ localStorage.setItem('cv_consent', JSON.stringify({v:CONSENT_VERSION,choice:c,ts:Date.now()})); }catch(e){} }
+  function anonId(){ try{ let a=localStorage.getItem('cv_anon'); if(!a){ a='anon-'+Math.random().toString(36).slice(2)+'-'+Date.now(); localStorage.setItem('cv_anon',a);} return a; }catch(e){ return 'anon-'+Math.random().toString(36).slice(2); } }
+
+  async function ensureSession(){
+    if(!online || !sb || sessionId || consent!=='granted') return;
+    try{ const { data:s } = await sb.from('participant_sessions').insert({ environment_id:envId, anon_id:anonId(), consent_analytics:true }).select('id').single(); sessionId=s?s.id:null; }catch(e){}
+  }
+
   async function logEvent(kind){
+    if(consent!=='granted') return;   // sem consentimento de analytics: nada de telemetria
     if(online && sb && sessionId){
       try{ await sb.from('interaction_events').insert({session_id:sessionId, environment_id:envId, node_id:nodeId, kind}); }catch(e){}
     }
@@ -222,12 +252,21 @@
           glb:x.model_glb_url||FALLBACK.glb, usdz:x.model_usdz_url||FALLBACK.usdz };
         render();
       }
-      const anonId='anon-'+Math.random().toString(36).slice(2)+'-'+Date.now();
-      const { data:s } = await sb.from('participant_sessions').insert({ environment_id:envId, anon_id:anonId, consent_analytics:true }).select('id').single();
-      sessionId=s?s.id:null; online=true;
+      online=true;
+      await ensureSession();     // só cria sessão com consentimento
       logEvent('scan');
     }catch(err){ console.warn('[imovel] offline:', err&&err.message); online=false; }
   }
+
+  // ---- Banner de consentimento ----
+  function showConsent(){ const el=$('analyticsConsent'); if(el) el.style.display=''; }
+  function hideConsent(){ const el=$('analyticsConsent'); if(el) el.style.display='none'; }
+  $('ac-yes').onclick=async ()=>{ saveConsent('granted'); hideConsent(); await ensureSession(); logEvent('scan'); };
+  $('ac-no').onclick =()=>{ saveConsent('denied'); hideConsent(); };
+  $('privlink').onclick=()=>{ showConsent(); window.scrollTo(0,document.body.scrollHeight); };
+
+  consent=loadConsent();
+  if(consent===null) showConsent();
   boot();
 </script>
 </body>
